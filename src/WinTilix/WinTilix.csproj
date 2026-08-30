@@ -30,14 +30,19 @@
     </Content>
   </ItemGroup>
 
+  <!-- A runtime-specific build nests PtyHost output under the RID, so resolve both layouts. -->
+  <PropertyGroup>
+    <PtyHostBuildDir>$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\</PtyHostBuildDir>
+    <PtyHostBuildDir Condition="'$(RuntimeIdentifier)' != ''">$(PtyHostBuildDir)$(RuntimeIdentifier)\</PtyHostBuildDir>
+  </PropertyGroup>
+
   <Target Name="CopyPtyHost" AfterTargets="Build">
     <ItemGroup>
-      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.exe" />
-      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.dll" />
-      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.runtimeconfig.json" />
-      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.deps.json" />
+      <PtyHostFiles Include="$(PtyHostBuildDir)WinTilix.PtyHost.*" Exclude="$(PtyHostBuildDir)WinTilix.PtyHost.pdb" />
     </ItemGroup>
     <Copy SourceFiles="@(PtyHostFiles)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Error Condition="!Exists('$(TargetDir)WinTilix.PtyHost.exe')"
+           Text="WinTilix.PtyHost.exe was not copied from $(PtyHostBuildDir)." />
   </Target>
 
 </Project>
