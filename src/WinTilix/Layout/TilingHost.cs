@@ -182,6 +182,12 @@ public sealed class TilingHost : UserControl
             _surface.Children.Remove(_splitters[dead]);
             _splitters.Remove(dead);
         }
+
+        // Ensure remaining panes refit xterm/ConPTY after tile geometry changes.
+        foreach (var pane in Panes)
+        {
+            pane.RequestTerminalFit();
+        }
     }
 
     private void LayoutNode(TileNode node, Rect rect, HashSet<SplitNode> live)

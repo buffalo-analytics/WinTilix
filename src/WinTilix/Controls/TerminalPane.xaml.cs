@@ -56,6 +56,7 @@ public partial class TerminalPane : UserControl, ISyncTarget
         Title = title;
         RefreshSessionChoices();
         Loaded += OnLoaded;
+        SizeChanged += (_, _) => RequestTerminalFit();
         GotFocus += (_, _) => Activated?.Invoke(this);
         PreviewMouseDown += (_, _) => Activated?.Invoke(this);
         _hub.Register(this);
@@ -69,6 +70,31 @@ public partial class TerminalPane : UserControl, ISyncTarget
     }
 
     public void ReceiveSyncedInput(string data) => _session?.Write(data);
+
+    /// <summary>
+    /// Ask xterm to remeasure after the WPF tile size changes (close pane, splitter, window resize).
+    /// WebView2 does not reliably raise window.resize for host-control-only size changes.
+    /// </summary>
+    public void RequestTerminalFit()
+    {
+        if (!_webReady || WebView.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(
+            () =>
+            {
+                if (!_webReady || WebView.CoreWebView2 is null)
+                {
+                    return;
+                }
+
+                WebView.CoreWebView2.PostWebMessageAsJson(
+                    JsonSerializer.Serialize(new { type = "fit" }));
+            },
+            DispatcherPriority.Loaded);
+    }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
