@@ -43,9 +43,31 @@
 
     term.onData((data) => post({ type: "input", data }));
     term.onResize((size) => post({ type: "resize", cols: size.cols, rows: size.rows }));
+    term.onSelectionChange(() => {
+      const selection = term.getSelection();
+      if (selection) {
+        post({ type: "copy", data: selection });
+      }
+    });
+    term.element.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      post({ type: "paste-request" });
+      term.focus();
+    });
     term.attachCustomKeyEventHandler((ev) => {
       if (!ev.ctrlKey || !ev.shiftKey || ev.altKey || ev.type !== "keydown") {
         return true;
+      }
+      if (ev.code === "KeyC") {
+        const selection = term.getSelection();
+        if (selection) {
+          post({ type: "copy", data: selection });
+        }
+        return false;
+      }
+      if (ev.code === "KeyV") {
+        post({ type: "paste-request" });
+        return false;
       }
       const commands = { KeyE: "split-right", KeyO: "split-down", KeyW: "close", KeyI: "toggle-sync" };
       const name = commands[ev.code];
@@ -74,6 +96,10 @@
         term.reset();
       } else if (msg.type === "focus") {
         term.focus();
+      } else if (msg.type === "paste") {
+        if (typeof msg.data === "string" && msg.data.length > 0) {
+          term.paste(msg.data);
+        }
       }
     });
 

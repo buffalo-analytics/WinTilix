@@ -145,6 +145,55 @@ public partial class TerminalPane : UserControl, ISyncTarget
             case "command":
                 HandleCommand(msg.GetProperty("name").GetString());
                 break;
+            case "copy":
+                var copyText = msg.GetProperty("data").GetString() ?? "";
+                if (copyText.Length > 0)
+                {
+                    Dispatcher.BeginInvoke(() => TrySetClipboardText(copyText));
+                }
+                break;
+            case "paste-request":
+                Dispatcher.BeginInvoke(PasteFromClipboard);
+                break;
+        }
+    }
+
+    private void PasteFromClipboard()
+    {
+        try
+        {
+            if (WebView.CoreWebView2 is null || !Clipboard.ContainsText())
+            {
+                return;
+            }
+
+            var text = Clipboard.GetText();
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            // Normalize Windows newlines so shells receive the same paste as on Linux terminals.
+            text = text.Replace("\r\n", "\n").Replace('\r', '\n');
+            WebView.CoreWebView2.PostWebMessageAsJson(
+                JsonSerializer.Serialize(new { type = "paste", data = text }));
+            Activated?.Invoke(this);
+        }
+        catch
+        {
+            // Windows clipboard access can briefly fail when another process owns it.
+        }
+    }
+
+    private static void TrySetClipboardText(string text)
+    {
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch
+        {
+            // The next selection change or Ctrl+Shift+C provides a clean retry.
         }
     }
 
@@ -192,17 +241,24 @@ public partial class TerminalPane : UserControl, ISyncTarget
                     return;
                 }
 
-                SessionSelector.ToolTip = $"{Title} (exited)";
-                if (_sshHealth != SshHealth.Failed)
+                if (_isSsh)
                 {
-                    SetSshHealth(SshHealth.Disconnected);
+                    SwitchSession(ShellResolver.DefaultShellCommand(), "Shell");
+                    return;
                 }
+
+                SessionSelector.ToolTip = $"{Title} (exited)";
             });
         }
         catch (Exception ex)
         {
+            var returnToShell = _isSsh;
             SetSshHealth(SshHealth.Failed);
             MessageBox.Show(ex.Message, "Failed to start terminal", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (returnToShell)
+            {
+                SwitchSession(ShellResolver.DefaultShellCommand(), "Shell");
+            }
         }
     }
 
