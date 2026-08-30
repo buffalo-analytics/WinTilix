@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using WinTilix.Controls;
+using WinTilix.Diagnostics;
 using WinTilix.Session;
 using WinTilix.Terminal;
 using WinTilix.Updates;
@@ -50,6 +51,7 @@ public partial class MainWindow : Window
         TabStrip.ItemsSource = _workspaces.Tabs;
         _workspaces.EnsureShellWorkspace();
         RefreshActiveWorkspaceUi();
+        DebugLog.Info("Main window ready");
 
         Loaded += async (_, _) => await CheckForUpdatesOnStartupAsync();
         Closed += (_, _) =>
@@ -224,6 +226,14 @@ public partial class MainWindow : Window
         var tab = _workspaces.OpenCluster(dialog.SelectedCluster);
         StatusText.Text = $"Opened cluster '{tab.Title}' in a new workspace tab.";
         RefreshActiveWorkspaceUi();
+    }
+
+    private void DebugReport_Click(object sender, RoutedEventArgs e)
+    {
+        var notes = _workspaces.Active is { } tab
+            ? $"Active workspace '{tab.Title}', tabs={_workspaces.Tabs.Count}, panes={tab.Tiling.Panes.Count()}"
+            : $"tabs={_workspaces.Tabs.Count}";
+        new DebugReportWindow(CurrentVersion, notes: notes) { Owner = this }.ShowDialog();
     }
 
     private void EditSshConfig_Click(object sender, RoutedEventArgs e)

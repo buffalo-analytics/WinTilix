@@ -133,6 +133,44 @@ public class SshConfigParserTests
     }
 
     [Fact]
+    public void RepeatedReadApplyCycles_DoNotDuplicateDirectives()
+    {
+        var document = SshConfigParser.Parse(
+            "config",
+            """
+            Host web
+                HostName web.example
+                User deploy
+                Ciphers aes256-ctr
+            """);
+        var section = document.HostSections.Single();
+
+        // Switching between hosts in the editor reads and re-applies each section.
+        for (var i = 0; i < 4; i++)
+        {
+            SshConfigParser.ApplyHost(document, section, SshConfigParser.ReadHost(section));
+        }
+
+        var text = document.Serialize();
+        Assert.Equal(1, CountOccurrences(text, "HostName web.example"));
+        Assert.Equal(1, CountOccurrences(text, "User deploy"));
+        Assert.Equal(1, CountOccurrences(text, "Ciphers aes256-ctr"));
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        var index = text.IndexOf(value, StringComparison.Ordinal);
+        while (index >= 0)
+        {
+            count++;
+            index = text.IndexOf(value, index + value.Length, StringComparison.Ordinal);
+        }
+
+        return count;
+    }
+
+    [Fact]
     public void Store_SaveCreatesBackup()
     {
         var directory = Path.Combine(Path.GetTempPath(), "WinTilix.Tests", Guid.NewGuid().ToString("N"));

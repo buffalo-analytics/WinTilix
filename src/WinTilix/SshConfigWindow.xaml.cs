@@ -60,6 +60,11 @@ public partial class SshConfigWindow : Window
             if (HostList.Items.Count > 0)
             {
                 HostList.SelectedIndex = 0;
+                _selected = HostList.SelectedItem as SshHostSection;
+                if (_selected is not null)
+                {
+                    LoadEditor(_selected);
+                }
             }
         }
         catch (Exception ex)
@@ -73,6 +78,10 @@ public partial class SshConfigWindow : Window
         }
     }
 
+    /// <summary>
+    /// Rebuilding the list raises <see cref="Selector.SelectionChanged"/>, so every
+    /// caller must run inside the <c>_loading</c> guard or the handler re-enters itself.
+    /// </summary>
     private void RefreshHostList()
     {
         if (_document is null)
@@ -80,10 +89,19 @@ public partial class SshConfigWindow : Window
             return;
         }
 
-        HostList.ItemsSource = null;
-        HostList.ItemsSource = _document.HostSections
-            .Where(section => section.IsEditable)
-            .ToList();
+        var previous = _loading;
+        _loading = true;
+        try
+        {
+            HostList.ItemsSource = null;
+            HostList.ItemsSource = _document.HostSections
+                .Where(section => section.IsEditable)
+                .ToList();
+        }
+        finally
+        {
+            _loading = previous;
+        }
     }
 
     private void HostList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -93,29 +111,42 @@ public partial class SshConfigWindow : Window
             return;
         }
 
-        if (_selected is not null && EditorPanel.IsEnabled)
+        var previous = _loading;
+        _loading = true;
+        try
         {
-            if (!TryApplyEditorToSelected())
+            var target = HostList.SelectedItem as SshHostSection;
+            if (_selected is not null && !ReferenceEquals(_selected, target) && EditorPanel.IsEnabled)
             {
-                _loading = true;
-                HostList.SelectedItem = _selected;
-                _loading = false;
+                if (!TryApplyEditorToSelected())
+                {
+                    HostList.SelectedItem = _selected;
+                    return;
+                }
+
+                // An edited alias changes the list label, so rebuild and re-select the clicked host.
+                RefreshHostList();
+                HostList.SelectedItem = target;
+            }
+
+            _selected = HostList.SelectedItem as SshHostSection;
+            if (_selected is null)
+            {
+                ClearEditor();
                 return;
             }
-        }
 
-        _selected = HostList.SelectedItem as SshHostSection;
-        if (_selected is null)
+            LoadEditor(_selected);
+        }
+        finally
         {
-            ClearEditor();
-            return;
+            _loading = previous;
         }
-
-        LoadEditor(_selected);
     }
 
     private void LoadEditor(SshHostSection section)
     {
+        var previous = _loading;
         _loading = true;
         EditorPanel.IsEnabled = true;
         var edit = SshConfigParser.ReadHost(section);
@@ -128,11 +159,12 @@ public partial class SshConfigWindow : Window
         AliveIntervalBox.Text = edit.ServerAliveInterval?.ToString() ?? "";
         AliveCountBox.Text = edit.ServerAliveCountMax?.ToString() ?? "";
         AdvancedBox.Text = edit.AdvancedText;
-        _loading = false;
+        _loading = previous;
     }
 
     private void ClearEditor()
     {
+        var previous = _loading;
         _loading = true;
         EditorPanel.IsEnabled = false;
         AliasBox.Text = "";
@@ -145,7 +177,7 @@ public partial class SshConfigWindow : Window
         AliveCountBox.Text = "";
         AdvancedBox.Text = "";
         _selected = null;
-        _loading = false;
+        _loading = previous;
     }
 
     private SshHostEdit BuildEditFromUi()
@@ -204,10 +236,6 @@ public partial class SshConfigWindow : Window
 
         SshConfigParser.ApplyHost(_document, _selected, edit);
         _dirty = true;
-        var current = _selected;
-        RefreshHostList();
-        HostList.SelectedItem = _document.HostSections.FirstOrDefault(section =>
-            section.Aliases.SequenceEqual(current.Aliases, StringComparer.OrdinalIgnoreCase)) ?? current;
         return true;
     }
 
@@ -235,9 +263,22 @@ public partial class SshConfigWindow : Window
         var edit = new SshHostEdit { Alias = alias };
         SshConfigParser.ApplyHost(_document, null, edit);
         _dirty = true;
-        RefreshHostList();
-        HostList.SelectedItem = _document.HostSections.Last(section =>
-            section.Aliases.Contains(alias, StringComparer.OrdinalIgnoreCase));
+
+        var previous = _loading;
+        _loading = true;
+        try
+        {
+            RefreshHostList();
+            _selected = _document.HostSections.Last(section =>
+                section.Aliases.Contains(alias, StringComparer.OrdinalIgnoreCase));
+            HostList.SelectedItem = _selected;
+            LoadEditor(_selected);
+        }
+        finally
+        {
+            _loading = previous;
+        }
+
         AliasBox.Focus();
         AliasBox.SelectAll();
     }
@@ -281,6 +322,19 @@ public partial class SshConfigWindow : Window
             Saved = true;
             _dirty = false;
             StatusText.Text = $"Saved {_document.FilePath}";
+
+            var previous = _loading;
+            _loading = true;
+            try
+            {
+                RefreshHostList();
+                HostList.SelectedItem = _selected;
+            }
+            finally
+            {
+                _loading = previous;
+            }
+
             return true;
         }
         catch (Exception ex)

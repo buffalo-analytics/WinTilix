@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
+using WinTilix.Diagnostics;
 
 namespace WinTilix.Terminal;
 
@@ -45,14 +46,16 @@ public sealed class ConPtySession : IDisposable
 
             var process = Process.Start(start) ?? throw new InvalidOperationException("Failed to start WinTilix.PtyHost.");
             pipe.WaitForConnection();
+            DebugLog.Info($"PtyHost started pid={process.Id}");
 
             var session = new ConPtySession(process, pipe, onOutput);
             _ = Task.Run(session.ReadLoop);
             _ = Task.Run(session.WaitForExit);
             return session;
         }
-        catch
+        catch (Exception ex)
         {
+            DebugLog.Error("Failed to start PtyHost", ex);
             pipe.Dispose();
             throw;
         }
@@ -142,6 +145,11 @@ public sealed class ConPtySession : IDisposable
         }
         catch
         {
+        }
+
+        if (LastReadError != 0 || LastWriteError != 0)
+        {
+            DebugLog.Warn($"PtyHost exited pid={ProcessId} readError={LastReadError} writeError={LastWriteError}");
         }
 
         Exited?.Invoke();

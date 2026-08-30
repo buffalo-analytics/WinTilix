@@ -24,6 +24,8 @@
           <Button Content="SSH clusters…" Margin="8,0,0,0" Padding="12,4" Click="Cluster_Click"/>
           <Button Content="Edit SSH config…" Margin="8,0,0,0" Padding="12,4" Click="EditSshConfig_Click"
                   ToolTip="Edit ~/.ssh/config and included config files"/>
+          <Button Content="Send debug report…" Margin="8,0,0,0" Padding="12,4" Click="DebugReport_Click"
+                  ToolTip="Save a local debug report and open a GitHub issue so we can inspect it"/>
           <Button x:Name="UpdateButton" Content="Check for updates" Margin="8,0,0,0" Padding="12,4"
                   Click="UpdateButton_Click" ToolTip="Check the latest WinTilix release on GitHub"/>
         </StackPanel>

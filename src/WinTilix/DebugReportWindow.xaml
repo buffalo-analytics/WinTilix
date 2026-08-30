@@ -1,0 +1,34 @@
+<Window x:Class="WinTilix.DebugReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Send debug report"
+        Height="420" Width="640"
+        MinHeight="360" MinWidth="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e"
+        Foreground="#e6e6e6">
+  <DockPanel Margin="18">
+    <TextBlock DockPanel.Dock="Top" FontSize="20" FontWeight="SemiBold" Text="Send debug report"/>
+    <TextBlock DockPanel.Dock="Top" Margin="0,8,0,12" Foreground="#9a9a9a" TextWrapping="Wrap"
+               Text="WinTilix writes a local report with version, OS, recent errors, and any crash exception. Open a GitHub issue and attach that file so we can inspect it. The report does not include SSH keys or ~/.ssh/config contents."/>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Copy path" Width="100" Click="Copy_Click"/>
+      <Button Content="Open folder" Width="110" Margin="8,0,0,0" Click="OpenFolder_Click"/>
+      <Button Content="Open GitHub issue" Width="150" Margin="8,0,0,0" IsDefault="True" Click="GitHub_Click"/>
+      <Button Content="Close" Width="90" Margin="8,0,0,0" IsCancel="True"/>
+    </StackPanel>
+
+    <Border Background="#141414" BorderBrush="#3a3a3a" BorderThickness="1" CornerRadius="3" Padding="10">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Foreground="#9a9a9a" Margin="0,0,0,6" Text="Report file"/>
+        <TextBox x:Name="PathBox" Style="{StaticResource DarkTextBox}" IsReadOnly="True"
+                 TextWrapping="Wrap" Height="48" Margin="0,0,0,10"/>
+        <TextBox x:Name="PreviewBox" Style="{StaticResource DarkTextBox}" IsReadOnly="True"
+                 AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                 FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                 VerticalContentAlignment="Top"/>
+      </DockPanel>
+    </Border>
+  </DockPanel>
+</Window>

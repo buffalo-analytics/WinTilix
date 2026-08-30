@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
+using WinTilix.Diagnostics;
 using WinTilix.Session;
 using WinTilix.Terminal;
 
@@ -109,6 +110,7 @@ public partial class TerminalPane : UserControl, ISyncTarget
         }
         catch (Exception ex)
         {
+            DebugLog.Error("WebView2 failed to initialize", ex);
             MessageBox.Show(
                 "Microsoft Edge WebView2 Runtime is required.\n\n" + ex.Message,
                 "WinTilix",
@@ -285,6 +287,7 @@ public partial class TerminalPane : UserControl, ISyncTarget
         {
             var returnToShell = _isSsh;
             SetSshHealth(SshHealth.Failed);
+            DebugLog.Error($"Failed to start terminal '{Title}'", ex);
             MessageBox.Show(ex.Message, "Failed to start terminal", MessageBoxButton.OK, MessageBoxImage.Error);
             if (returnToShell)
             {
