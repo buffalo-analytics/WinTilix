@@ -17,7 +17,7 @@ public partial class MainWindow : Window
 
     private readonly SessionHub _hub = new();
     private readonly TilingHost _tiling = new();
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly GitHubUpdateService _updateService;
     private readonly WindowTheme _windowTheme;
     private TerminalPane? _focused;
@@ -110,13 +110,14 @@ public partial class MainWindow : Window
         try
         {
             var result = await GetUpdateCheckAsync();
-            new UpdateWindow(CurrentVersion, result) { Owner = this }.ShowDialog();
+            new UpdateWindow(CurrentVersion, _updateService, result) { Owner = this }.ShowDialog();
         }
         catch (Exception)
         {
             _updateCheckTask = null;
             new UpdateWindow(
                 CurrentVersion,
+                _updateService,
                 null,
                 "The update service is unavailable. Check your connection, or try again after a GitHub Release has been published.")
             {

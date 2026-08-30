@@ -1,11 +1,16 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace WinTilix.Updates;
 
 public sealed class GitHubUpdateService
 {
+    private static readonly Regex SetupAssetNamePattern = new(
+        @"^WinTilix-.+-win-x64-setup\.exe$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private readonly HttpClient _httpClient;
     private readonly Uri _latestReleaseUri;
 
@@ -47,12 +52,103 @@ public sealed class GitHubUpdateService
             throw new InvalidOperationException("GitHub returned release information WinTilix could not understand.");
         }
 
+        var package = SelectSetupAsset(
+            release.Assets?
+                .Where(asset =>
+                    Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out var downloadUri) &&
+                    downloadUri.Scheme == Uri.UriSchemeHttps)
+                .Select(asset => new UpdatePackageAsset(
+                    asset.Name,
+                    new Uri(asset.DownloadUrl),
+                    asset.Size))
+            ?? []);
+
         return new UpdateCheckResult(
             currentVersion,
             latestVersion,
             release.Name ?? release.TagName,
             releaseUri,
-            latestVersion > currentVersion);
+            latestVersion > currentVersion,
+            package);
+    }
+
+    public async Task<string> DownloadAsync(
+        UpdatePackageAsset package,
+        Version version,
+        IProgress<UpdateDownloadProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+        ArgumentNullException.ThrowIfNull(version);
+
+        if (!SetupAssetNamePattern.IsMatch(package.Name) ||
+            package.DownloadUri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new ArgumentException("The update package is not a valid WinTilix installer.", nameof(package));
+        }
+
+        var downloadDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "WinTilix",
+            "Updates",
+            FormatVersion(version));
+        Directory.CreateDirectory(downloadDirectory);
+
+        var destinationPath = Path.Combine(downloadDirectory, package.Name);
+        var temporaryPath = destinationPath + ".download";
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, package.DownloadUri);
+            request.Headers.UserAgent.Add(new ProductInfoHeaderValue("WinTilix", FormatVersion(version)));
+            using var response = await _httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            var totalBytes = response.Content.Headers.ContentLength ?? (package.Size > 0 ? package.Size : null);
+            progress?.Report(new UpdateDownloadProgress(0, totalBytes));
+
+            await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+            await using (var destination = new FileStream(
+                temporaryPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                81920,
+                FileOptions.Asynchronous))
+            {
+                var buffer = new byte[81920];
+                long bytesReceived = 0;
+                int bytesRead;
+                while ((bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+                    bytesReceived += bytesRead;
+                    progress?.Report(new UpdateDownloadProgress(bytesReceived, totalBytes));
+                }
+
+                await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            File.Move(temporaryPath, destinationPath, true);
+            return destinationPath;
+        }
+        catch
+        {
+            File.Delete(temporaryPath);
+            throw;
+        }
+    }
+
+    public static UpdatePackageAsset? SelectSetupAsset(IEnumerable<UpdatePackageAsset> assets)
+    {
+        ArgumentNullException.ThrowIfNull(assets);
+
+        return assets.FirstOrDefault(asset =>
+            SetupAssetNamePattern.IsMatch(asset.Name) &&
+            asset.DownloadUri.Scheme == Uri.UriSchemeHttps);
     }
 
     public static bool TryParseVersion(string? tagName, out Version version)
@@ -79,7 +175,13 @@ public sealed class GitHubUpdateService
     private sealed record GitHubRelease(
         [property: JsonPropertyName("tag_name")] string TagName,
         [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("html_url")] string HtmlUrl);
+        [property: JsonPropertyName("html_url")] string HtmlUrl,
+        [property: JsonPropertyName("assets")] IReadOnlyList<GitHubAsset>? Assets);
+
+    private sealed record GitHubAsset(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("browser_download_url")] string DownloadUrl,
+        [property: JsonPropertyName("size")] long Size);
 }
 
 public sealed record UpdateCheckResult(
@@ -87,4 +189,13 @@ public sealed record UpdateCheckResult(
     Version LatestVersion,
     string ReleaseName,
     Uri ReleaseUri,
-    bool IsUpdateAvailable);
+    bool IsUpdateAvailable,
+    UpdatePackageAsset? Package);
+
+public sealed record UpdatePackageAsset(string Name, Uri DownloadUri, long Size);
+
+public sealed record UpdateDownloadProgress(long BytesReceived, long? TotalBytes)
+{
+    public double? Percentage =>
+        TotalBytes > 0 ? Math.Min(100, BytesReceived * 100d / TotalBytes.Value) : null;
+}
