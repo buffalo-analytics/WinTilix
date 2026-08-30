@@ -10,7 +10,7 @@
 AppId={{8B9EE5B5-A28C-4D5C-BD93-73FE26EE178A}
 AppName=WinTilix
 AppVersion={#AppVersion}
-AppPublisher=buffalo-analytics
+AppPublisher=Buffalo Analytics
 AppPublisherURL=https://github.com/buffalo-analytics/WinTilix
 AppSupportURL=https://github.com/buffalo-analytics/WinTilix/issues
 AppUpdatesURL=https://github.com/buffalo-analytics/WinTilix/releases
