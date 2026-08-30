@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>WinTilix.PtyCheck</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WinTilix.Core\WinTilix.Core.csproj" />
+    <ProjectReference Include="..\WinTilix.PtyHost\WinTilix.PtyHost.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyPtyHost" AfterTargets="Build">
+    <ItemGroup>
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.exe" />
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.dll" />
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.runtimeconfig.json" />
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.deps.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PtyHostFiles)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

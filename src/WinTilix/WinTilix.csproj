@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyTitle>WinTilix</AssemblyTitle>
+    <Product>WinTilix</Product>
+    <Description>Windows tiling terminal with synchronized input, inspired by Tilix</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinTilix.Core\WinTilix.Core.csproj" />
+    <ProjectReference Include="..\..\tools\WinTilix.PtyHost\WinTilix.PtyHost.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Web\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="CopyPtyHost" AfterTargets="Build">
+    <ItemGroup>
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.exe" />
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.dll" />
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.runtimeconfig.json" />
+      <PtyHostFiles Include="$(MSBuildThisFileDirectory)..\..\tools\WinTilix.PtyHost\bin\$(Configuration)\net8.0-windows\WinTilix.PtyHost.deps.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PtyHostFiles)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

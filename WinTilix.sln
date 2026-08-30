@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C6CC6754-0BFE-4C1B-876A-73236BC524E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinTilix.Core", "src\WinTilix.Core\WinTilix.Core.csproj", "{7C4E91A2-6B18-4F0D-9E33-2A1B8C7D4E5F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinTilix", "src\WinTilix\WinTilix.csproj", "{4A94663B-1727-49BF-9E4A-7AB263F25B89}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{E1F2A3B4-C5D6-7890-ABCD-EF1234567890}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinTilix.PtyHost", "tools\WinTilix.PtyHost\WinTilix.PtyHost.csproj", "{B7E8C9D0-1A2B-3C4D-5E6F-708192A3B4C5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinTilix.PtyCheck", "tools\WinTilix.PtyCheck\WinTilix.PtyCheck.csproj", "{0D1E2F3A-4B5C-6D7E-8F90-1A2B3C4D5E6F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{5A2B3431-D179-4AD0-A12C-9FE980124E07}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinTilix.Tests", "tests\WinTilix.Tests\WinTilix.Tests.csproj", "{5E03F766-30CF-4F3D-A8CC-2427716C28AD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7C4E91A2-6B18-4F0D-9E33-2A1B8C7D4E5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C4E91A2-6B18-4F0D-9E33-2A1B8C7D4E5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C4E91A2-6B18-4F0D-9E33-2A1B8C7D4E5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C4E91A2-6B18-4F0D-9E33-2A1B8C7D4E5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A94663B-1727-49BF-9E4A-7AB263F25B89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A94663B-1727-49BF-9E4A-7AB263F25B89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A94663B-1727-49BF-9E4A-7AB263F25B89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A94663B-1727-49BF-9E4A-7AB263F25B89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7E8C9D0-1A2B-3C4D-5E6F-708192A3B4C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7E8C9D0-1A2B-3C4D-5E6F-708192A3B4C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7E8C9D0-1A2B-3C4D-5E6F-708192A3B4C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7E8C9D0-1A2B-3C4D-5E6F-708192A3B4C5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D1E2F3A-4B5C-6D7E-8F90-1A2B3C4D5E6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D1E2F3A-4B5C-6D7E-8F90-1A2B3C4D5E6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D1E2F3A-4B5C-6D7E-8F90-1A2B3C4D5E6F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D1E2F3A-4B5C-6D7E-8F90-1A2B3C4D5E6F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E03F766-30CF-4F3D-A8CC-2427716C28AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E03F766-30CF-4F3D-A8CC-2427716C28AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E03F766-30CF-4F3D-A8CC-2427716C28AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E03F766-30CF-4F3D-A8CC-2427716C28AD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7C4E91A2-6B18-4F0D-9E33-2A1B8C7D4E5F} = {C6CC6754-0BFE-4C1B-876A-73236BC524E3}
+		{4A94663B-1727-49BF-9E4A-7AB263F25B89} = {C6CC6754-0BFE-4C1B-876A-73236BC524E3}
+		{B7E8C9D0-1A2B-3C4D-5E6F-708192A3B4C5} = {E1F2A3B4-C5D6-7890-ABCD-EF1234567890}
+		{0D1E2F3A-4B5C-6D7E-8F90-1A2B3C4D5E6F} = {E1F2A3B4-C5D6-7890-ABCD-EF1234567890}
+		{5E03F766-30CF-4F3D-A8CC-2427716C28AD} = {5A2B3431-D179-4AD0-A12C-9FE980124E07}
+	EndGlobalSection
+EndGlobal

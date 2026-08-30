@@ -1,0 +1,39 @@
+﻿<Window x:Class="WinTilix.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WinTilix"
+        Height="720" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#121212"
+        Foreground="#e6e6e6">
+  <Window.InputBindings>
+    <KeyBinding Key="E" Modifiers="Ctrl+Shift" Command="{Binding SplitRightCommand}"/>
+    <KeyBinding Key="O" Modifiers="Ctrl+Shift" Command="{Binding SplitDownCommand}"/>
+    <KeyBinding Key="W" Modifiers="Ctrl+Shift" Command="{Binding ClosePaneCommand}"/>
+    <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{Binding ToggleSyncCommand}"/>
+    <KeyBinding Key="T" Modifiers="Ctrl+Shift" Command="{Binding NewShellCommand}"/>
+  </Window.InputBindings>
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#1a1a1a" Padding="8,6" BorderBrush="#2a2a2a" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+          <ToggleButton x:Name="SyncToggle" Content="Synchronize input" Padding="12,4" Click="SyncToggle_Click"
+                        ToolTip="Type once, send to every pane that has the keyboard icon enabled (Ctrl+Shift+I)"/>
+          <Button Content="SSH cluster…" Margin="8,0,0,0" Padding="12,4" Click="Cluster_Click"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <Button Content="Split →" Padding="10,4" Margin="0,0,6,0" Click="SplitRight_Click"/>
+          <Button Content="Split ↓" Padding="10,4" Margin="0,0,6,0" Click="SplitDown_Click"/>
+          <Button Content="New shell" Padding="10,4" Margin="0,0,6,0" Click="NewShell_Click"/>
+          <Button Content="Close pane" Padding="10,4" Click="ClosePane_Click"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <StatusBar DockPanel.Dock="Bottom" Background="#161616" Foreground="#9a9a9a">
+      <StatusBarItem>
+        <TextBlock x:Name="StatusText" Text="Ctrl+Shift+E split right · Ctrl+Shift+O split down · Ctrl+Shift+I sync input"/>
+      </StatusBarItem>
+    </StatusBar>
+    <ContentControl x:Name="RootHost"/>
+  </DockPanel>
+</Window>

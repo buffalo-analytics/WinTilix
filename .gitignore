@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.WebView2/
+probe-report.txt
+child-mode.txt
+

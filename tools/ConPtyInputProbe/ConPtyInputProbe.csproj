@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- WinExe so the probe never owns a console; a console-attached parent
+         changes whether the child attaches to the pseudoconsole. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>WinTilix.ConPtyInputProbe</RootNamespace>
+  </PropertyGroup>
+</Project>

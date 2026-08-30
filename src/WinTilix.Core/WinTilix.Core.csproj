@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>WinTilix</RootNamespace>
+    <Description>ConPTY, tiling session sync, and shell resolution for WinTilix</Description>
+  </PropertyGroup>
+
+</Project>
