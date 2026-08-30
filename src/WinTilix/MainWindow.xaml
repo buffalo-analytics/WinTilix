@@ -20,6 +20,8 @@
           <ToggleButton x:Name="SyncToggle" Content="Synchronize input" Padding="12,4" Click="SyncToggle_Click"
                         ToolTip="Type once, send to every pane that has the keyboard icon enabled (Ctrl+Shift+I)"/>
           <Button Content="SSH cluster…" Margin="8,0,0,0" Padding="12,4" Click="Cluster_Click"/>
+          <Button x:Name="UpdateButton" Content="Check for updates" Margin="8,0,0,0" Padding="12,4"
+                  Click="UpdateButton_Click" ToolTip="Check the latest WinTilix release on GitHub"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal">
           <Button Content="Split →" Padding="10,4" Margin="0,0,6,0" Click="SplitRight_Click"/>

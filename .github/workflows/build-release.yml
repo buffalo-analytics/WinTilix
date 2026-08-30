@@ -1,0 +1,102 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore WinTilix.sln
+
+      - name: Build
+        run: dotnet build WinTilix.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test WinTilix.sln --configuration Release --no-build --no-restore
+
+      - name: Read release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Release tags must use the form v1.2.3."
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Publish self-contained application
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          dotnet publish src/WinTilix/WinTilix.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output artifacts/publish `
+            -p:Version=${{ steps.version.outputs.value }} `
+            -p:DebugType=None `
+            -p:DebugSymbols=false
+
+          dotnet publish tools/WinTilix.PtyHost/WinTilix.PtyHost.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output artifacts/publish `
+            -p:Version=${{ steps.version.outputs.value }} `
+            -p:DebugType=None `
+            -p:DebugSymbols=false
+
+      - name: Install Inno Setup
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress --yes
+          }
+
+      - name: Build Windows installer
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $publishDir = (Resolve-Path "artifacts/publish").Path
+          & $iscc `
+            "/DAppVersion=${{ steps.version.outputs.value }}" `
+            "/DPublishDir=$publishDir" `
+            "installer/WinTilix.iss"
+
+      - name: Upload installer artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinTilix-${{ steps.version.outputs.value }}-win-x64
+          path: artifacts/installer/*.exe
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/installer/*.exe

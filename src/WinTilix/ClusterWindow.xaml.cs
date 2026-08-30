@@ -4,11 +4,15 @@ namespace WinTilix;
 
 public partial class ClusterWindow : Window
 {
+    private readonly WindowTheme _windowTheme;
+
     public IReadOnlyList<string> Hosts { get; private set; } = [];
 
     public ClusterWindow()
     {
+        _windowTheme = new WindowTheme(this);
         InitializeComponent();
+        Closed += (_, _) => _windowTheme.Dispose();
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;

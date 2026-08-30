@@ -10,6 +10,9 @@
     <AssemblyTitle>WinTilix</AssemblyTitle>
     <Product>WinTilix</Product>
     <Description>Windows tiling terminal with synchronized input, inspired by Tilix</Description>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <RepositoryUrl>https://github.com/buffalo-analytics/WinTilix</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>

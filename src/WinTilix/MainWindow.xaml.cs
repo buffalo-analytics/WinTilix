@@ -1,18 +1,27 @@
-﻿using System.Windows;
+﻿using System.Net.Http;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using WinTilix.Controls;
 using WinTilix.Layout;
 using WinTilix.Session;
 using WinTilix.Terminal;
+using WinTilix.Updates;
 
 namespace WinTilix;
 
 public partial class MainWindow : Window
 {
+    private static readonly Version CurrentVersion =
+        typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0);
+
     private readonly SessionHub _hub = new();
     private readonly TilingHost _tiling = new();
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly GitHubUpdateService _updateService;
+    private readonly WindowTheme _windowTheme;
     private TerminalPane? _focused;
+    private Task<UpdateCheckResult>? _updateCheckTask;
 
     public ICommand SplitRightCommand { get; }
     public ICommand SplitDownCommand { get; }
@@ -22,6 +31,8 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _windowTheme = new WindowTheme(this);
+        _updateService = new GitHubUpdateService(_httpClient, "buffalo-analytics", "WinTilix");
         SplitRightCommand = new RelayCommand(() => SplitFocused(Orientation.Horizontal));
         SplitDownCommand = new RelayCommand(() => SplitFocused(Orientation.Vertical));
         ClosePaneCommand = new RelayCommand(CloseFocused);
@@ -33,7 +44,13 @@ public partial class MainWindow : Window
         var first = CreatePane(ShellResolver.DefaultShellCommand(), "Shell");
         _tiling.SetRoot(first);
         _hub.SyncModeChanged += () => Dispatcher.BeginInvoke(() => SyncToggle.IsChecked = _hub.SessionSyncEnabled);
-        Closed += (_, _) => _tiling.DisposeAll();
+        Loaded += async (_, _) => await CheckForUpdatesOnStartupAsync();
+        Closed += (_, _) =>
+        {
+            _httpClient.Dispose();
+            _windowTheme.Dispose();
+            _tiling.DisposeAll();
+        };
     }
 
     private TerminalPane CreatePane(string commandLine, string title)
@@ -83,6 +100,56 @@ public partial class MainWindow : Window
         _hub.SessionSyncEnabled = true;
         StatusText.Text = $"Cluster of {panes.Count} SSH panes. Type in one pane to drive them all.";
     }
+
+    private async void UpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateButton.IsEnabled = false;
+        var originalContent = UpdateButton.Content;
+        UpdateButton.Content = "Checking…";
+
+        try
+        {
+            var result = await GetUpdateCheckAsync();
+            new UpdateWindow(CurrentVersion, result) { Owner = this }.ShowDialog();
+        }
+        catch (Exception)
+        {
+            _updateCheckTask = null;
+            new UpdateWindow(
+                CurrentVersion,
+                null,
+                "The update service is unavailable. Check your connection, or try again after a GitHub Release has been published.")
+            {
+                Owner = this,
+            }.ShowDialog();
+        }
+        finally
+        {
+            UpdateButton.Content = originalContent;
+            UpdateButton.IsEnabled = true;
+        }
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        try
+        {
+            var result = await GetUpdateCheckAsync();
+            if (result.IsUpdateAvailable)
+            {
+                UpdateButton.Content = "Update available";
+                StatusText.Text = $"WinTilix {GitHubUpdateService.FormatVersion(result.LatestVersion)} is available.";
+            }
+        }
+        catch (Exception)
+        {
+            // Startup checks are intentionally quiet. A manual check shows an actionable error.
+            _updateCheckTask = null;
+        }
+    }
+
+    private Task<UpdateCheckResult> GetUpdateCheckAsync() =>
+        _updateCheckTask ??= _updateService.CheckAsync(CurrentVersion);
 
     private void SplitFocused(Orientation orientation)
     {

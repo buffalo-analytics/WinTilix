@@ -4,6 +4,7 @@ obj/
 *.user
 *.suo
 *.WebView2/
+artifacts/
 probe-report.txt
 child-mode.txt
 

@@ -72,6 +72,8 @@
         term.write(bytes);
       } else if (msg.type === "clear") {
         term.reset();
+      } else if (msg.type === "focus") {
+        term.focus();
       }
     });
 

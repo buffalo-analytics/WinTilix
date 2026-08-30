@@ -21,6 +21,7 @@ static class Checker
         if (visible.Contains("WIN_TILIX_PTY_OK"))
         {
             Console.WriteLine("PTY_CHECK_ECHO_OK");
+            Console.WriteLine("pty-output: " + MarkerLine(StripAnsi(visible), "WIN_TILIX_PTY_OK"));
             return 0;
         }
 
@@ -49,11 +50,18 @@ static class Checker
         first.Write(command);
         hub.BroadcastInput("a", command);
 
-        var firstText = WaitUntil(firstOut, t => t.Contains(marker), TimeSpan.FromSeconds(8));
-        var secondText = WaitUntil(secondOut, t => t.Contains(marker), TimeSpan.FromSeconds(8));
-        if (firstText.Contains(marker) && secondText.Contains(marker))
+        // The marker echoes once from the line editor and once from `echo` running,
+        // so two occurrences per pane means the command actually executed there.
+        var firstText = WaitUntil(firstOut, t => Occurrences(t, marker) >= 2, TimeSpan.FromSeconds(8));
+        var secondText = WaitUntil(secondOut, t => Occurrences(t, marker) >= 2, TimeSpan.FromSeconds(8));
+        var firstHits = Occurrences(firstText, marker);
+        var secondHits = Occurrences(secondText, marker);
+        Console.WriteLine($"typed-pane occurrences={firstHits} broadcast-pane occurrences={secondHits}");
+        if (firstHits >= 2 && secondHits >= 2)
         {
             Console.WriteLine("PTY_CHECK_SYNC_OK");
+            Console.WriteLine("typed-pane: " + MarkerLine(StripAnsi(firstText), marker));
+            Console.WriteLine("broadcast-pane: " + MarkerLine(StripAnsi(secondText), marker));
             return 0;
         }
 
@@ -109,6 +117,34 @@ static class Checker
     }
 
     static string StripAnsi(string text) => Regex.Replace(text, @"\x1B\[[0-9;?]*[A-Za-z]", "");
+
+    static int Occurrences(string haystack, string needle)
+    {
+        var total = 0;
+        var index = 0;
+        while ((index = haystack.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
+        {
+            total++;
+            index += needle.Length;
+        }
+
+        return total;
+    }
+
+    static string MarkerLine(string text, string marker)
+    {
+        var line = text.Split('\n', '\r')
+            .LastOrDefault(candidate => candidate.Contains(marker, StringComparison.Ordinal));
+        if (line is null)
+        {
+            return "<not found>";
+        }
+
+        // ConPTY paints the screen, so a line can still carry cursor-positioning
+        // remnants around the marker itself.
+        var start = line.IndexOf(marker, StringComparison.Ordinal);
+        return line[start..].Trim();
+    }
 
     sealed class LivePane(string id, ConPtySession session) : ISyncTarget
     {

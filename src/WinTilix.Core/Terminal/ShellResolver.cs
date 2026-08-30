@@ -31,5 +31,26 @@ public static class ShellResolver
         return $"{Quote(ssh)} {target}";
     }
 
+    public static bool IsSshCommand(string commandLine)
+    {
+        var value = commandLine.TrimStart();
+        string executable;
+        if (value.StartsWith('"'))
+        {
+            var closingQuote = value.IndexOf('"', 1);
+            executable = closingQuote > 1 ? value[1..closingQuote] : value[1..];
+        }
+        else
+        {
+            var separator = value.IndexOfAny([' ', '\t']);
+            executable = separator >= 0 ? value[..separator] : value;
+        }
+
+        return string.Equals(
+            Path.GetFileNameWithoutExtension(executable),
+            "ssh",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string Quote(string path) => path.Contains(' ') ? $"\"{path}\"" : path;
 }

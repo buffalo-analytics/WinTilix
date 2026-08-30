@@ -10,8 +10,8 @@ public class ConPtySessionTests
     {
         var result = RunPtyCheck("echo");
         Assert.True(result.ExitCode == 0, result.Output);
-        Assert.Contains("WIN_TILIX_PTY_OK", result.Output);
         Assert.Contains("PTY_CHECK_ECHO_OK", result.Output);
+        Assert.Contains("pty-output: WIN_TILIX_PTY_OK", result.Output);
     }
 
     [Fact]
@@ -20,6 +20,8 @@ public class ConPtySessionTests
         var result = RunPtyCheck("sync");
         Assert.True(result.ExitCode == 0, result.Output);
         Assert.Contains("PTY_CHECK_SYNC_OK", result.Output);
+        Assert.Contains("typed-pane: WIN_TILIX_SYNC_OK", result.Output);
+        Assert.Contains("broadcast-pane: WIN_TILIX_SYNC_OK", result.Output);
     }
 
     private static (int ExitCode, string Output) RunPtyCheck(string mode)

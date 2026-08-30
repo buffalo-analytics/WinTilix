@@ -1,8 +1,11 @@
 using System.ComponentModel;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
-using System.Text;
 using Microsoft.Win32.SafeHandles;
+
+const int StdInputHandle = -10;
+const int StdOutputHandle = -11;
+const int StdErrorHandle = -12;
 
 var cols = args.Length > 0 && short.TryParse(args[0], out var c) ? c : (short)80;
 var rows = args.Length > 1 && short.TryParse(args[1], out var r) ? r : (short)24;
@@ -16,33 +19,8 @@ if (string.IsNullOrWhiteSpace(pipeName))
     return 4;
 }
 
-// Opt-in tracing: the host has no console, so diagnostics must go to a file.
-var logPath = Environment.GetEnvironmentVariable("WINTILIX_PTYHOST_LOG");
-var logLock = new object();
-void Trace(string message)
-{
-    if (logPath is null)
-    {
-        return;
-    }
-
-    try
-    {
-        lock (logLock)
-        {
-            File.AppendAllText(logPath, $"[{Environment.ProcessId} {DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}");
-        }
-    }
-    catch (IOException)
-    {
-    }
-}
-
-Trace($"start commandLine={commandLine} cols={cols} rows={rows}");
-
 using var input = new NamedPipeClientStream(".", pipeName, PipeDirection.In, PipeOptions.None);
 input.Connect(10000);
-Trace("named pipe connected");
 
 var sa = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>(), bInheritHandle = 1 };
 if (!CreatePipe(out var inRead, out var inWrite, ref sa, 0)) throw new Win32Exception();
@@ -52,7 +30,6 @@ SetHandleInformation(outRead.DangerousGetHandle(), 1, 0);
 
 var coord = new COORD { X = Math.Max(cols, (short)8), Y = Math.Max(rows, (short)8) };
 var hr = CreatePseudoConsole(coord, inRead, outWrite, 0, out var hPC);
-Trace($"CreatePseudoConsole hr=0x{hr:X8}");
 if (hr != 0) return 1;
 
 var size = IntPtr.Zero;
@@ -66,10 +43,19 @@ if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, (IntPtr)0x00020016, hPC, (
     return 2;
 }
 
+// This host's stdout is a pipe back to the app. CreateProcess would hand those
+// std handles to the shell, which then writes to the pipe instead of the
+// pseudoconsole screen, leaving ConPTY with nothing to render and no input sink.
+// Detaching them forces the shell onto the pseudoconsole. The handle values stay
+// valid for our own use afterwards.
+var appStdout = GetStdHandle(StdOutputHandle);
+SetStdHandle(StdInputHandle, IntPtr.Zero);
+SetStdHandle(StdOutputHandle, IntPtr.Zero);
+SetStdHandle(StdErrorHandle, IntPtr.Zero);
+
 var pSec = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>() };
 var tSec = new SECURITY_ATTRIBUTES { nLength = Marshal.SizeOf<SECURITY_ATTRIBUTES>() };
 var created = CreateProcess(null, commandLine, ref pSec, ref tSec, false, 0x00080000, IntPtr.Zero, null, ref si, out var pi);
-Trace($"CreateProcess={created} pid={pi.dwProcessId} err={Marshal.GetLastWin32Error()} consoleWindow=0x{GetConsoleWindow():X}");
 if (!created)
 {
     return 3;
@@ -80,12 +66,11 @@ outWrite.Dispose();
 
 var ptyOut = new FileStream(outRead, FileAccess.Read, 4096, false);
 var ptyIn = new FileStream(inWrite, FileAccess.Write, 4096, false);
-var stdout = new FileStream(new SafeFileHandle(GetStdHandle(-11), ownsHandle: false), FileAccess.Write, 4096, false);
+var stdout = new FileStream(new SafeFileHandle(appStdout, ownsHandle: false), FileAccess.Write, 4096, false);
 
-var outputTask = Task.Run(() => Copy(ptyOut, stdout, "pty->app"));
-var inputTask = Task.Run(() => Copy(input, ptyIn, "app->pty"));
+var outputTask = Task.Run(() => Copy(ptyOut, stdout));
+var inputTask = Task.Run(() => Copy(input, ptyIn));
 WaitForSingleObject(pi.hProcess, 0xFFFFFFFF);
-Trace("child exited");
 try { ptyIn.Flush(); } catch (IOException) { }
 ClosePseudoConsole(hPC);
 try { outputTask.Wait(TimeSpan.FromSeconds(1)); } catch { }
@@ -95,10 +80,9 @@ try { ptyIn.Dispose(); } catch { }
 try { stdout.Dispose(); } catch { }
 return 0;
 
-void Copy(Stream from, Stream to, string direction)
+static void Copy(Stream from, Stream to)
 {
     var buffer = new byte[4096];
-    var total = 0L;
     try
     {
         while (true)
@@ -106,45 +90,22 @@ void Copy(Stream from, Stream to, string direction)
             var n = from.Read(buffer, 0, buffer.Length);
             if (n <= 0)
             {
-                Trace($"{direction} ended after {total} bytes (read returned {n})");
                 break;
             }
 
-            total += n;
-            Trace($"{direction} {n} bytes (total {total}): {Escape(buffer, n)}");
             to.Write(buffer, 0, n);
             to.Flush();
         }
     }
-    catch (IOException ex)
+    catch (IOException)
     {
-        Trace($"{direction} IOException after {total} bytes: {ex.Message}");
     }
 }
 
-static string Escape(byte[] buffer, int length)
-{
-    var text = Encoding.UTF8.GetString(buffer, 0, Math.Min(length, 400));
-    var builder = new StringBuilder(text.Length * 2);
-    foreach (var ch in text)
-    {
-        builder.Append(ch switch
-        {
-            '\u001b' => "<ESC>",
-            '\r' => "<CR>",
-            '\n' => "<LF>",
-            '\0' => "<NUL>",
-            _ => ch >= ' ' && ch <= '~' ? ch.ToString() : $"<{(int)ch:X2}>"
-        });
-    }
-
-    return builder.ToString();
-}
-
-[DllImport("kernel32.dll")]
-static extern IntPtr GetConsoleWindow();
 [DllImport("kernel32.dll", SetLastError = true)]
 static extern IntPtr GetStdHandle(int nStdHandle);
+[DllImport("kernel32.dll", SetLastError = true)]
+static extern bool SetStdHandle(int nStdHandle, IntPtr hHandle);
 [DllImport("kernel32.dll", SetLastError = true)]
 static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 [DllImport("kernel32.dll", SetLastError = true)]

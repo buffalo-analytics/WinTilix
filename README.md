@@ -31,6 +31,17 @@ The WPF app copies `WinTilix.PtyHost.exe` next to `WinTilix.exe` after a success
 
 `src/WinTilix/bin/Release/net8.0-windows/WinTilix.exe`
 
+## Install and updates
+
+Published versions are available from [GitHub Releases](https://github.com/buffalo-analytics/WinTilix/releases).
+Run the `WinTilix-<version>-win-x64-setup.exe` asset to install a self-contained x64 build. The
+installer adds WinTilix to the Start menu and offers a desktop shortcut; either shortcut can be
+pinned to the taskbar using the standard Windows context menu.
+
+WinTilix checks the latest stable GitHub Release in the background at startup. Use **Check for
+updates** in the toolbar to see the installed and latest versions and open the release download
+page. The check is informational: installing a newer release remains an explicit user action.
+
 ### Tests
 
 ```bash
@@ -71,7 +82,9 @@ The extra projects under `tools/` (probes and session hosts) are development uti
 
 ## Status
 
-This is an early public snapshot. Expect rough edges around terminal emulation, theming, profiles, and packaging. Issues and pull requests are welcome once the GitHub repository is live.
+This is an early public snapshot. Expect rough edges around terminal emulation, theming, and profiles.
+CI builds and tests every change. Pushing a semantic version tag such as `v0.1.0` publishes the
+self-contained installer as a GitHub Release.
 
 ## License
 
