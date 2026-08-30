@@ -42,38 +42,13 @@ WinTilix checks the latest stable GitHub Release in the background at startup. U
 updates** in the toolbar to see the installed and latest versions and open the release download
 page. The check is informational: installing a newer release remains an explicit user action.
 
-### Code signing (Buffalo Analytics / DigiCert)
+Releases are not code signed, so Windows SmartScreen shows a warning the first time you run the
+installer. Choose **More info → Run anyway** to continue.
 
-Windows SmartScreen shows **Unknown publisher** for unsigned installers. That is expected until
-Buffalo Analytics has a DigiCert code-signing identity wired into CI.
+### Uninstall
 
-1. Buy a DigiCert **Code Signing** certificate for the legal entity **Buffalo Analytics**, hosted in
-   DigiCert **KeyLocker / Software Trust Manager** (cloud HSM — required for GitHub Actions; a USB
-   token alone will not work in CI).
-2. Complete DigiCert organization validation (company docs / identity verification).
-3. In DigiCert ONE, create a service user, API key, client authentication certificate (`.p12`), and
-   a keypair / certificate profile whose subject will appear as the Windows publisher.
-4. In the GitHub repo **Settings → Secrets and variables → Actions**, add:
-
-   | Kind | Name | Value |
-   | --- | --- | --- |
-   | Variable | `SM_HOST` | DigiCert Software Trust host URL from your account |
-   | Variable | `SM_KEYPAIR_ALIAS` | Keypair alias used to sign |
-   | Secret | `SM_API_KEY` | Service-user API key |
-   | Secret | `SM_CLIENT_CERT_PASSWORD` | Password for the `.p12` client cert |
-   | Secret | `SM_CLIENT_CERT_FILE_B64` | Base64 of the `.p12` file |
-
-   Encode the client cert on a trusted machine:
-
-   ```powershell
-   [Convert]::ToBase64String([IO.File]::ReadAllBytes('.\client-auth.p12')) | Set-Clipboard
-   ```
-
-5. Push a new `vX.Y.Z` tag. The release workflow signs `WinTilix.exe`, `WinTilix.PtyHost.exe`, and
-   the setup EXE when those values are present; otherwise it still publishes an unsigned installer.
-
-Until reputation builds, SmartScreen may still warn occasionally even after signing; the publisher
-name should change from **Unknown publisher** to **Buffalo Analytics**.
+WinTilix installs per user. Remove it from **Settings → Apps → Installed apps → WinTilix**, or run
+`unins000.exe` from the install folder (`%LocalAppData%\Programs\WinTilix`).
 
 ### Tests
 
