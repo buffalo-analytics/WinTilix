@@ -12,14 +12,18 @@
     <KeyBinding Key="W" Modifiers="Ctrl+Shift" Command="{Binding ClosePaneCommand}"/>
     <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{Binding ToggleSyncCommand}"/>
     <KeyBinding Key="T" Modifiers="Ctrl+Shift" Command="{Binding NewShellCommand}"/>
+    <KeyBinding Key="Tab" Modifiers="Ctrl" Command="{Binding NextTabCommand}"/>
+    <KeyBinding Key="Tab" Modifiers="Ctrl+Shift" Command="{Binding PreviousTabCommand}"/>
   </Window.InputBindings>
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#1a1a1a" Padding="8,6" BorderBrush="#2a2a2a" BorderThickness="0,0,0,1">
       <DockPanel>
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
           <ToggleButton x:Name="SyncToggle" Content="Synchronize input" Padding="12,4" Click="SyncToggle_Click"
-                        ToolTip="Type once, send to every pane that has the keyboard icon enabled (Ctrl+Shift+I)"/>
-          <Button Content="SSH cluster…" Margin="8,0,0,0" Padding="12,4" Click="Cluster_Click"/>
+                        ToolTip="Type once, send to every pane in the active workspace that has the keyboard icon enabled (Ctrl+Shift+I)"/>
+          <Button Content="SSH clusters…" Margin="8,0,0,0" Padding="12,4" Click="Cluster_Click"/>
+          <Button Content="Edit SSH config…" Margin="8,0,0,0" Padding="12,4" Click="EditSshConfig_Click"
+                  ToolTip="Edit ~/.ssh/config and included config files"/>
           <Button x:Name="UpdateButton" Content="Check for updates" Margin="8,0,0,0" Padding="12,4"
                   Click="UpdateButton_Click" ToolTip="Check the latest WinTilix release on GitHub"/>
         </StackPanel>
@@ -31,9 +35,43 @@
         </StackPanel>
       </DockPanel>
     </Border>
+
+    <Border DockPanel.Dock="Top" Background="#161616" BorderBrush="#2a2a2a" BorderThickness="0,0,0,1" Padding="6,4">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="+" Width="32" Height="26"
+                ToolTip="New Shell workspace tab" Click="NewTab_Click"/>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <ItemsControl x:Name="TabStrip">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Margin="0,0,4,0" CornerRadius="3" Padding="2"
+                        Background="#252525" BorderBrush="#3a3a3a" BorderThickness="1"
+                        MouseLeftButtonDown="Tab_MouseLeftButtonDown"
+                        Tag="{Binding}">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="✕" Width="22" Height="22"
+                            Margin="4,0,0,0" Padding="0" FontSize="11"
+                            Background="Transparent" BorderThickness="0" Foreground="#aaaaaa"
+                            Click="CloseTab_Click" Tag="{Binding}"/>
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
+                               Margin="8,2,4,2" Foreground="#e6e6e6"/>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
     <StatusBar DockPanel.Dock="Bottom" Background="#161616" Foreground="#9a9a9a">
       <StatusBarItem>
-        <TextBlock x:Name="StatusText" Text="Ctrl+Shift+E split right · Ctrl+Shift+O split down · Ctrl+Shift+I sync input"/>
+        <TextBlock x:Name="StatusText" Text="Ctrl+Shift+E split right · Ctrl+Shift+O split down · Ctrl+Shift+I sync input · Ctrl+Tab switch workspace"/>
       </StatusBarItem>
     </StatusBar>
     <ContentControl x:Name="RootHost"/>

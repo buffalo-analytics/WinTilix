@@ -1,13 +1,20 @@
-using System.Text;
-
 namespace WinTilix.Terminal;
 
 public static class SshConfigReader
 {
+    public static string UserConfigPath
+    {
+        get
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(home, ".ssh", "config");
+        }
+    }
+
     public static IReadOnlyList<string> ReadUserHosts()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return ReadHosts(Path.Combine(home, ".ssh", "config"), home);
+        return ReadHosts(UserConfigPath, home);
     }
 
     public static IReadOnlyList<string> ReadHosts(string configPath, string homeDirectory)
@@ -18,16 +25,41 @@ public static class SshConfigReader
         return aliases.Order(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    public static IReadOnlyList<string> ReadUserConfigFiles()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return ReadConfigFiles(UserConfigPath, home);
+    }
+
+    public static IReadOnlyList<string> ReadConfigFiles(string configPath, string homeDirectory)
+    {
+        var root = Path.GetFullPath(configPath);
+        var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var files = new List<string>();
+        ReadFile(root, Path.GetFullPath(homeDirectory), aliases, visited, files);
+
+        if (!files.Contains(root, StringComparer.OrdinalIgnoreCase))
+        {
+            files.Insert(0, root);
+        }
+
+        return files;
+    }
+
     private static void ReadFile(
         string path,
         string homeDirectory,
         HashSet<string> aliases,
-        HashSet<string> visited)
+        HashSet<string> visited,
+        List<string>? files = null)
     {
         if (!visited.Add(path) || !File.Exists(path))
         {
             return;
         }
+
+        files?.Add(path);
 
         string[] lines;
         try
@@ -45,7 +77,7 @@ public static class SshConfigReader
 
         foreach (var rawLine in lines)
         {
-            var tokens = Tokenize(rawLine);
+            var tokens = SshConfigTokenizer.Tokenize(rawLine);
             if (tokens.Count < 2)
             {
                 continue;
@@ -53,7 +85,7 @@ public static class SshConfigReader
 
             if (tokens[0].Equals("Host", StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var alias in tokens.Skip(1).Where(IsSelectableAlias))
+                foreach (var alias in tokens.Skip(1).Where(SshConfigTokenizer.IsSelectableAlias))
                 {
                     aliases.Add(alias);
                 }
@@ -64,20 +96,14 @@ public static class SshConfigReader
                 {
                     foreach (var includedPath in ExpandInclude(include, homeDirectory))
                     {
-                        ReadFile(includedPath, homeDirectory, aliases, visited);
+                        ReadFile(includedPath, homeDirectory, aliases, visited, files);
                     }
                 }
             }
         }
     }
 
-    private static bool IsSelectableAlias(string value) =>
-        !value.StartsWith('!') &&
-        value.IndexOfAny(['*', '?']) < 0;
-
-    private static IEnumerable<string> ExpandInclude(
-        string include,
-        string homeDirectory)
+    private static IEnumerable<string> ExpandInclude(string include, string homeDirectory)
     {
         var expanded = include
             .Replace("%d", homeDirectory, StringComparison.OrdinalIgnoreCase)
@@ -94,7 +120,6 @@ public static class SshConfigReader
 
         if (!Path.IsPathRooted(expanded))
         {
-            // OpenSSH resolves relative user Include paths from ~/.ssh.
             expanded = Path.Combine(homeDirectory, ".ssh", expanded);
         }
 
@@ -136,46 +161,5 @@ public static class SshConfigReader
         {
             yield return Path.GetFullPath(match);
         }
-    }
-
-    private static IReadOnlyList<string> Tokenize(string line)
-    {
-        var result = new List<string>();
-        var token = new StringBuilder();
-        var quoted = false;
-
-        foreach (var ch in line)
-        {
-            if (ch == '"' || ch == '\'')
-            {
-                quoted = !quoted;
-                continue;
-            }
-
-            if (ch == '#' && !quoted)
-            {
-                break;
-            }
-
-            if (char.IsWhiteSpace(ch) && !quoted)
-            {
-                if (token.Length > 0)
-                {
-                    result.Add(token.ToString());
-                    token.Clear();
-                }
-
-                continue;
-            }
-
-            token.Append(ch);
-        }
-
-        if (token.Length > 0)
-        {
-            result.Add(token.ToString());
-        }
-
-        return result;
     }
 }

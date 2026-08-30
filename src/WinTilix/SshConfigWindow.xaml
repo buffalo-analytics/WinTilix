@@ -1,0 +1,128 @@
+<Window x:Class="WinTilix.SshConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SSH config editor"
+        Height="700" Width="980"
+        MinHeight="520" MinWidth="820"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e"
+        Foreground="#e6e6e6"
+        PreviewKeyDown="Window_PreviewKeyDown">
+  <DockPanel Margin="14">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="Reload file" Width="96" Margin="0,0,8,0" Click="Reload_Click"/>
+        <Button Content="Cancel" Width="90" Margin="0,0,8,0" IsCancel="True" Click="Cancel_Click"/>
+        <Button Content="Save" Width="90" IsDefault="True" Click="Save_Click"/>
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Text="SSH hosts" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock Margin="0,2,0,0" Foreground="#9a9a9a" TextWrapping="Wrap"
+                   Text="Edit common OpenSSH fields constructively. Advanced directives stay as text. Saves create a .bak backup."/>
+      </StackPanel>
+    </DockPanel>
+
+    <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,10,0,0"
+               Foreground="#9adbd6" Text="Ctrl+S saves the selected config file."/>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="260"/>
+        <ColumnDefinition Width="12"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <DockPanel Grid.Column="0">
+        <ComboBox x:Name="ConfigFilePicker"
+                  DockPanel.Dock="Top"
+                  Style="{StaticResource DarkComboBox}"
+                  Height="30"
+                  MaxDropDownHeight="280"
+                  ToolTip="SSH config file"
+                  SelectionChanged="ConfigFilePicker_SelectionChanged"/>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+          <Button Content="Add host" Width="90" Margin="0,0,8,0" Click="AddHost_Click"/>
+          <Button Content="Delete" Width="80" Click="DeleteHost_Click"/>
+        </StackPanel>
+        <ListBox x:Name="HostList"
+                 Margin="0,8,0,0"
+                 Background="#141414"
+                 BorderBrush="#3a3a3a"
+                 BorderThickness="1"
+                 Foreground="#e6e6e6"
+                 DisplayMemberPath="DisplayName"
+                 SelectionChanged="HostList_SelectionChanged">
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Padding" Value="8,5"/>
+              <Setter Property="Foreground" Value="#e6e6e6"/>
+              <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter Property="Background" Value="#365f5b"/>
+                  <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </ListBox.ItemContainerStyle>
+        </ListBox>
+      </DockPanel>
+
+      <Border Grid.Column="2" Background="#141414" BorderBrush="#3a3a3a" BorderThickness="1" CornerRadius="3" Padding="14">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="EditorPanel" IsEnabled="False">
+            <TextBlock Text="Host alias" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+            <TextBox x:Name="AliasBox" Style="{StaticResource DarkTextBox}" Height="30" Margin="0,0,0,10"/>
+
+            <Grid Margin="0,0,0,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="140"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="HostName" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+                <TextBox x:Name="HostNameBox" Style="{StaticResource DarkTextBox}" Height="30"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Port" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+                <TextBox x:Name="PortBox" Style="{StaticResource DarkTextBox}" Height="30"/>
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="User" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+            <TextBox x:Name="UserBox" Style="{StaticResource DarkTextBox}" Height="30" Margin="0,0,0,10"/>
+
+            <TextBlock Text="IdentityFile (one per line)" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+            <TextBox x:Name="IdentityBox" Style="{StaticResource DarkTextBox}" Height="70"
+                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10"/>
+
+            <TextBlock Text="ProxyJump (one per line)" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+            <TextBox x:Name="ProxyJumpBox" Style="{StaticResource DarkTextBox}" Height="54"
+                     AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10"/>
+
+            <Grid Margin="0,0,0,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="ServerAliveInterval" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+                <TextBox x:Name="AliveIntervalBox" Style="{StaticResource DarkTextBox}" Height="30"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="ServerAliveCountMax" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+                <TextBox x:Name="AliveCountBox" Style="{StaticResource DarkTextBox}" Height="30"/>
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="Advanced directives" Foreground="#9a9a9a" Margin="0,0,0,4"/>
+            <TextBox x:Name="AdvancedBox" Style="{StaticResource DarkTextBox}" Height="120"
+                     AcceptsReturn="True" AcceptsTab="True" FontFamily="Cascadia Mono, Consolas"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

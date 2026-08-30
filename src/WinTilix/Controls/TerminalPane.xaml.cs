@@ -158,6 +158,11 @@ public partial class TerminalPane : UserControl, ISyncTarget
                 StartSession(_cols, _rows);
                 break;
             case "input":
+                if (!IsHitTestVisible)
+                {
+                    break;
+                }
+
                 var data = msg.GetProperty("data").GetString() ?? "";
                 _session?.Write(data);
                 _hub.BroadcastInput(PaneId, data);
@@ -368,7 +373,14 @@ public partial class TerminalPane : UserControl, ISyncTarget
         FocusTerminal();
     }
 
-    private void FocusTerminal()
+    public void SetAcceptsInput(bool enabled)
+    {
+        IsHitTestVisible = enabled;
+        WebView.IsEnabled = enabled;
+        WebView.Focusable = enabled;
+    }
+
+    public void FocusTerminal()
     {
         // Close the dropdown first so Up/Down cannot change hosts, then move
         // keyboard focus into the terminal so typing goes to the shell.

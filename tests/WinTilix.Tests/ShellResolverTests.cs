@@ -62,4 +62,52 @@ public class ShellResolverTests
             Directory.Delete(home, recursive: true);
         }
     }
+
+    [Fact]
+    public void Discovers_root_and_included_config_files_for_editing()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "WinTilix.Tests", Guid.NewGuid().ToString("N"));
+        var ssh = Path.Combine(home, ".ssh");
+        var includes = Path.Combine(ssh, "config.d");
+        Directory.CreateDirectory(includes);
+
+        try
+        {
+            var root = Path.Combine(ssh, "config");
+            var included = Path.Combine(includes, "work.conf");
+            File.WriteAllText(root, "Include config.d/*.conf");
+            File.WriteAllText(included, "Host work");
+
+            var files = SshConfigReader.ReadConfigFiles(root, home);
+
+            Assert.Equal([root, included], files);
+        }
+        finally
+        {
+            Directory.Delete(home, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Saves_ssh_config_atomically_and_keeps_a_backup()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "WinTilix.Tests", Guid.NewGuid().ToString("N"));
+        var config = Path.Combine(directory, "config");
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            File.WriteAllText(config, "Host old");
+
+            SshConfigStore.Save(config, "Host new\n    HostName example.test\n");
+
+            Assert.Contains("Host new", File.ReadAllText(config));
+            Assert.Equal("Host old", File.ReadAllText(config + ".bak"));
+            Assert.False(File.Exists(config + ".wintilix.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }

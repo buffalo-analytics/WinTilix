@@ -6,42 +6,46 @@ namespace WinTilix.Tests;
 public class SessionHubTests
 {
     [Fact]
-    public void Broadcasts_to_other_participating_panes_only()
+    public void Broadcast_DoesNotCrossHubs()
     {
-        var hub = new SessionHub { SessionSyncEnabled = true };
-        var a = new FakePane("a");
-        var b = new FakePane("b");
-        var c = new FakePane("c") { ParticipateInSync = false };
-        hub.Register(a);
-        hub.Register(b);
-        hub.Register(c);
+        var hubA = new SessionHub { SessionSyncEnabled = true };
+        var hubB = new SessionHub { SessionSyncEnabled = true };
+        var a1 = new FakeTarget("a1");
+        var a2 = new FakeTarget("a2");
+        var b1 = new FakeTarget("b1");
+        hubA.Register(a1);
+        hubA.Register(a2);
+        hubB.Register(b1);
 
-        hub.BroadcastInput("a", "hostname\r");
+        hubA.BroadcastInput("a1", "hello");
 
-        Assert.Empty(a.Received);
-        Assert.Equal(["hostname\r"], b.Received);
-        Assert.Empty(c.Received);
+        Assert.Equal(["hello"], a2.Received);
+        Assert.Empty(b1.Received);
     }
 
     [Fact]
-    public void Does_not_broadcast_when_session_sync_is_off()
+    public void Broadcast_StaysInsideEnabledHubOnly()
     {
-        var hub = new SessionHub();
-        var a = new FakePane("a");
-        var b = new FakePane("b");
-        hub.Register(a);
-        hub.Register(b);
+        var active = new SessionHub { SessionSyncEnabled = true };
+        var background = new SessionHub { SessionSyncEnabled = true };
+        var activePeer = new FakeTarget("a2");
+        var backgroundPeer = new FakeTarget("b2");
+        active.Register(new FakeTarget("a1"));
+        active.Register(activePeer);
+        background.Register(new FakeTarget("b1"));
+        background.Register(backgroundPeer);
 
-        hub.BroadcastInput("a", "ls\r");
+        active.BroadcastInput("a1", "typed-in-active-tab");
+        background.BroadcastInput("b1", "");
 
-        Assert.Empty(b.Received);
+        Assert.Equal(["typed-in-active-tab"], activePeer.Received);
+        Assert.Empty(backgroundPeer.Received);
     }
 
-    private sealed class FakePane : ISyncTarget
+    private sealed class FakeTarget(string id) : ISyncTarget
     {
-        public FakePane(string id) => PaneId = id;
-        public string PaneId { get; }
-        public bool ParticipateInSync { get; set; } = true;
+        public string PaneId { get; } = id;
+        public bool ParticipateInSync => true;
         public List<string> Received { get; } = [];
         public void ReceiveSyncedInput(string data) => Received.Add(data);
     }
