@@ -32,6 +32,12 @@ var coord = new COORD { X = Math.Max(cols, (short)8), Y = Math.Max(rows, (short)
 var hr = CreatePseudoConsole(coord, inRead, outWrite, 0, out var hPC);
 if (hr != 0) return 1;
 
+// The app resizes the pseudoconsole over a side channel, because the stdin pipe
+// carries raw terminal bytes that must not be parsed for commands.
+var ptyLock = new object();
+var ptyClosed = false;
+var controlTask = Task.Run(() => ControlLoop(pipeName + ".ctl"));
+
 var size = IntPtr.Zero;
 InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
 var si = new STARTUPINFOEX();
@@ -72,13 +78,60 @@ var outputTask = Task.Run(() => Copy(ptyOut, stdout));
 var inputTask = Task.Run(() => Copy(input, ptyIn));
 WaitForSingleObject(pi.hProcess, 0xFFFFFFFF);
 try { ptyIn.Flush(); } catch (IOException) { }
-ClosePseudoConsole(hPC);
+lock (ptyLock)
+{
+    ptyClosed = true;
+    ClosePseudoConsole(hPC);
+}
+
 try { outputTask.Wait(TimeSpan.FromSeconds(1)); } catch { }
+try { controlTask.Wait(TimeSpan.FromMilliseconds(200)); } catch { }
 try { inputTask.Wait(TimeSpan.FromMilliseconds(200)); } catch { }
 try { ptyOut.Dispose(); } catch { }
 try { ptyIn.Dispose(); } catch { }
 try { stdout.Dispose(); } catch { }
 return 0;
+
+void ControlLoop(string controlPipeName)
+{
+    try
+    {
+        using var control = new NamedPipeClientStream(".", controlPipeName, PipeDirection.In, PipeOptions.None);
+        control.Connect(10000);
+        using var reader = new StreamReader(control);
+        while (reader.ReadLine() is { } line)
+        {
+            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 3 ||
+                parts[0] != "resize" ||
+                !short.TryParse(parts[1], out var newCols) ||
+                !short.TryParse(parts[2], out var newRows))
+            {
+                continue;
+            }
+
+            var size = new COORD
+            {
+                X = Math.Max(newCols, (short)8),
+                Y = Math.Max(newRows, (short)8),
+            };
+
+            lock (ptyLock)
+            {
+                if (ptyClosed)
+                {
+                    return;
+                }
+
+                ResizePseudoConsole(hPC, size);
+            }
+        }
+    }
+    catch (Exception)
+    {
+        // Resize is best effort: the session keeps running at its current size.
+    }
+}
 
 static void Copy(Stream from, Stream to)
 {
@@ -120,6 +173,8 @@ static extern bool InitializeProcThreadAttributeList(IntPtr lpAttributeList, int
 static extern bool UpdateProcThreadAttribute(IntPtr lpAttributeList, uint dwFlags, IntPtr attribute, IntPtr lpValue, IntPtr cbSize, IntPtr lpPreviousValue, IntPtr lpReturnSize);
 [DllImport("kernel32.dll", SetLastError = true)]
 static extern void ClosePseudoConsole(IntPtr hPC);
+[DllImport("kernel32.dll", SetLastError = true)]
+static extern int ResizePseudoConsole(IntPtr hPC, COORD size);
 [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool CreateProcess(string? lpApplicationName, string lpCommandLine, ref SECURITY_ATTRIBUTES lpProcessAttributes, ref SECURITY_ATTRIBUTES lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string? lpCurrentDirectory, ref STARTUPINFOEX lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
 

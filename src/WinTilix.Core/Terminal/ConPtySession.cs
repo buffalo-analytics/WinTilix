@@ -9,9 +9,14 @@ public sealed class ConPtySession : IDisposable
 {
     private readonly Process _host;
     private readonly NamedPipeServerStream _stdin;
+    private readonly NamedPipeServerStream _control;
     private readonly Stream _stdout;
     private readonly object _writeLock = new();
+    private readonly object _controlLock = new();
     private readonly CancellationTokenSource _cts = new();
+    private bool _controlConnected;
+    private int _cols;
+    private int _rows;
     private bool _disposed;
 
     public event Action<byte[]>? OutputReceived;
@@ -25,6 +30,12 @@ public sealed class ConPtySession : IDisposable
         var hostPath = LocatePtyHost();
         var pipeName = "WinTilix." + Guid.NewGuid().ToString("N");
         var pipe = new NamedPipeServerStream(pipeName, PipeDirection.Out, 1, PipeTransmissionMode.Byte, PipeOptions.None);
+        var control = new NamedPipeServerStream(
+            pipeName + ".ctl",
+            PipeDirection.Out,
+            1,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous);
         try
         {
             var start = new ProcessStartInfo(hostPath)
@@ -48,24 +59,35 @@ public sealed class ConPtySession : IDisposable
             pipe.WaitForConnection();
             DebugLog.Info($"PtyHost started pid={process.Id}");
 
-            var session = new ConPtySession(process, pipe, onOutput);
+            var session = new ConPtySession(process, pipe, control, cols, rows, onOutput);
             _ = Task.Run(session.ReadLoop);
             _ = Task.Run(session.WaitForExit);
+            _ = session.ConnectControlAsync();
             return session;
         }
         catch (Exception ex)
         {
             DebugLog.Error("Failed to start PtyHost", ex);
             pipe.Dispose();
+            control.Dispose();
             throw;
         }
     }
 
-    private ConPtySession(Process host, NamedPipeServerStream stdin, Action<byte[]>? onOutput)
+    private ConPtySession(
+        Process host,
+        NamedPipeServerStream stdin,
+        NamedPipeServerStream control,
+        int cols,
+        int rows,
+        Action<byte[]>? onOutput)
     {
         _host = host;
         ProcessId = host.Id;
         _stdin = stdin;
+        _control = control;
+        _cols = cols;
+        _rows = rows;
         _stdout = host.StandardOutput.BaseStream;
         if (onOutput is not null)
         {
@@ -104,10 +126,71 @@ public sealed class ConPtySession : IDisposable
         }
     }
 
+    /// <summary>
+    /// Forwards the new grid size to the pseudoconsole. Without this the shell keeps
+    /// painting for the size it started with, so text and the cursor land in the
+    /// wrong rows after a pane or window resize.
+    /// </summary>
     public void Resize(int cols, int rows)
     {
-        _ = cols;
-        _ = rows;
+        if (_disposed)
+        {
+            return;
+        }
+
+        cols = Math.Max(cols, 8);
+        rows = Math.Max(rows, 8);
+
+        lock (_controlLock)
+        {
+            if (cols == _cols && rows == _rows)
+            {
+                return;
+            }
+
+            _cols = cols;
+            _rows = rows;
+            if (_controlConnected)
+            {
+                SendResize(cols, rows);
+            }
+        }
+    }
+
+    private async Task ConnectControlAsync()
+    {
+        try
+        {
+            await _control.WaitForConnectionAsync(_cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        lock (_controlLock)
+        {
+            _controlConnected = true;
+
+            // A resize may have arrived while the host was still connecting.
+            SendResize(_cols, _rows);
+        }
+    }
+
+    private void SendResize(int cols, int rows)
+    {
+        try
+        {
+            var payload = Encoding.ASCII.GetBytes($"resize {cols} {rows}\n");
+            _control.Write(payload, 0, payload.Length);
+            _control.Flush();
+        }
+        catch (IOException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private void ReadLoop()
@@ -165,6 +248,7 @@ public sealed class ConPtySession : IDisposable
         _disposed = true;
         _cts.Cancel();
         try { _host.Kill(entireProcessTree: true); } catch { }
+        try { _control.Dispose(); } catch { }
         try { _stdin.Dispose(); } catch { }
         try { _stdout.Dispose(); } catch { }
         try { _host.Dispose(); } catch { }

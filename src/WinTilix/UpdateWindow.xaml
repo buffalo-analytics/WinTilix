@@ -36,6 +36,7 @@
             Background="#171717" BorderBrush="#353535" BorderThickness="1" CornerRadius="4">
       <StackPanel VerticalAlignment="Center">
         <TextBlock x:Name="MessageText" TextWrapping="Wrap"/>
+        <TextBlock x:Name="CheckedAtText" Margin="0,8,0,0" Foreground="#8a8a8a" FontSize="11" TextWrapping="Wrap"/>
         <ProgressBar x:Name="DownloadProgress" Height="8" Margin="0,12,0,0"
                      Minimum="0" Maximum="100" Visibility="Collapsed"
                      Background="#2a2a2a" Foreground="#62b8b0"/>
@@ -43,6 +44,8 @@
     </Border>
 
     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button x:Name="CheckNowButton" Content="Check now" Width="100" Margin="0,0,8,0"
+              Click="CheckNowButton_Click" ToolTip="Ask GitHub for the latest release again"/>
       <Button x:Name="CloseButton" Content="Close" Width="90" IsCancel="True"/>
       <Button x:Name="ReleaseButton" Content="View release" Width="110" Margin="8,0,0,0"
               Click="ReleaseButton_Click"/>

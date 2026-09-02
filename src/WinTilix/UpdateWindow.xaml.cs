@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
+using WinTilix.Diagnostics;
 using WinTilix.Updates;
 
 namespace WinTilix;
@@ -7,58 +8,103 @@ namespace WinTilix;
 public partial class UpdateWindow : Window
 {
     private readonly WindowTheme _windowTheme;
+    private readonly Version _currentVersion;
     private readonly GitHubUpdateService _updateService;
-    private readonly UpdateCheckResult? _result;
-    private readonly Uri? _releaseUri;
+    private readonly UpdateCheckCoordinator _updateChecker;
+    private UpdateCheckResult? _result;
+    private Uri? _releaseUri;
     private CancellationTokenSource? _downloadCancellation;
 
     public UpdateWindow(
         Version currentVersion,
         GitHubUpdateService updateService,
-        UpdateCheckResult? result,
-        string? errorMessage = null)
+        UpdateCheckCoordinator updateChecker)
     {
         _windowTheme = new WindowTheme(this);
+        _currentVersion = currentVersion;
         _updateService = updateService;
-        _result = result;
+        _updateChecker = updateChecker;
         InitializeComponent();
 
         CurrentVersionText.Text = GitHubUpdateService.FormatVersion(currentVersion);
-        LatestVersionText.Text = result is null
-            ? "Unavailable"
-            : GitHubUpdateService.FormatVersion(result.LatestVersion);
+        ApplyResult(updateChecker.LastResult);
 
-        if (result?.IsUpdateAvailable == true)
-        {
-            _releaseUri = result.ReleaseUri;
-            if (result.Package is not null)
-            {
-                MessageText.Text = $"{result.ReleaseName} is available. WinTilix can download the installer and start the update.";
-            }
-            else
-            {
-                MessageText.Text = $"{result.ReleaseName} is available, but it does not include a compatible Windows installer. View the release to download it manually.";
-                InstallButton.Visibility = Visibility.Collapsed;
-            }
-        }
-        else if (result is not null)
-        {
-            MessageText.Text = "You have the latest published version.";
-            ReleaseButton.Visibility = Visibility.Collapsed;
-            InstallButton.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            MessageText.Text = errorMessage ?? "WinTilix could not check GitHub for updates.";
-            ReleaseButton.Visibility = Visibility.Collapsed;
-            InstallButton.Visibility = Visibility.Collapsed;
-        }
-
+        // Opening the window always asks GitHub again rather than trusting an earlier answer.
+        Loaded += async (_, _) => await RunCheckAsync();
         Closed += (_, _) =>
         {
             _downloadCancellation?.Cancel();
             _windowTheme.Dispose();
         };
+    }
+
+    private async void CheckNowButton_Click(object sender, RoutedEventArgs e) => await RunCheckAsync();
+
+    private async Task RunCheckAsync()
+    {
+        CheckNowButton.IsEnabled = false;
+        InstallButton.Visibility = Visibility.Collapsed;
+        ReleaseButton.Visibility = Visibility.Collapsed;
+        MessageText.Text = "Checking GitHub for the latest release…";
+        CheckedAtText.Text = "";
+
+        try
+        {
+            ApplyResult(await _updateChecker.GetAsync(forceRefresh: true));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Warn("Update check failed: " + ex.Message);
+            ApplyResult(
+                null,
+                "WinTilix could not reach GitHub. Check your connection, then use Check now to try again.");
+        }
+        finally
+        {
+            CheckNowButton.IsEnabled = true;
+        }
+    }
+
+    private void ApplyResult(UpdateCheckResult? result, string? errorMessage = null)
+    {
+        _result = result;
+        _releaseUri = result?.ReleaseUri;
+
+        LatestVersionText.Text = result is null
+            ? "Unavailable"
+            : GitHubUpdateService.FormatVersion(result.LatestVersion);
+        CheckedAtText.Text = _updateChecker.LastCheckedAt is { } checkedAt
+            ? $"Last checked {checkedAt.ToLocalTime():HH:mm:ss}"
+            : "";
+
+        if (result is null)
+        {
+            MessageText.Text = errorMessage ?? "WinTilix could not check GitHub for updates.";
+            ReleaseButton.Visibility = Visibility.Collapsed;
+            InstallButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (!result.IsUpdateAvailable)
+        {
+            MessageText.Text =
+                $"You are on the latest published version ({GitHubUpdateService.FormatVersion(_currentVersion)}).";
+            ReleaseButton.Visibility = Visibility.Collapsed;
+            InstallButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ReleaseButton.Visibility = Visibility.Visible;
+        if (result.Package is not null)
+        {
+            MessageText.Text = $"{result.ReleaseName} is available. WinTilix can download the installer and start the update.";
+            InstallButton.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            MessageText.Text = $"{result.ReleaseName} is available, but it does not include a compatible Windows installer. View the release to download it manually.";
+            InstallButton.Visibility = Visibility.Collapsed;
+        }
     }
 
     private async void InstallButton_Click(object sender, RoutedEventArgs e)
@@ -70,6 +116,7 @@ public partial class UpdateWindow : Window
 
         InstallButton.IsEnabled = false;
         ReleaseButton.IsEnabled = false;
+        CheckNowButton.IsEnabled = false;
         DownloadProgress.Visibility = Visibility.Visible;
         DownloadProgress.IsIndeterminate = _result.Package.Size <= 0;
         MessageText.Text = $"Downloading {_result.Package.Name}…";
@@ -108,12 +155,14 @@ public partial class UpdateWindow : Window
         {
             // Closing the window cancels an in-progress download.
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            DebugLog.Error("Update download failed", ex);
             MessageText.Text = "The installer could not be downloaded or started. Use View release to download it manually.";
             DownloadProgress.Visibility = Visibility.Collapsed;
             InstallButton.IsEnabled = true;
             ReleaseButton.IsEnabled = true;
+            CheckNowButton.IsEnabled = true;
         }
         finally
         {

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using WinTilix.Controls;
 using WinTilix.Diagnostics;
 using WinTilix.Session;
@@ -16,11 +17,14 @@ public partial class MainWindow : Window
     private static readonly Version CurrentVersion =
         typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0);
 
+    private static readonly TimeSpan UpdatePollInterval = TimeSpan.FromHours(3);
+
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly GitHubUpdateService _updateService;
     private readonly WindowTheme _windowTheme;
     private readonly WorkspaceManager _workspaces;
-    private Task<UpdateCheckResult>? _updateCheckTask;
+    private readonly UpdateCheckCoordinator _updateChecker;
+    private readonly DispatcherTimer _updatePollTimer;
     private SessionHub? _syncBoundHub;
 
     public ICommand SplitRightCommand { get; }
@@ -35,6 +39,10 @@ public partial class MainWindow : Window
     {
         _windowTheme = new WindowTheme(this);
         _updateService = new GitHubUpdateService(_httpClient, "buffalo-analytics", "WinTilix");
+        _updateChecker = new UpdateCheckCoordinator(
+            token => _updateService.CheckAsync(CurrentVersion, token));
+        _updatePollTimer = new DispatcherTimer { Interval = UpdatePollInterval };
+        _updatePollTimer.Tick += async (_, _) => await PollForUpdatesAsync();
         _workspaces = new WorkspaceManager(CreatePane);
         _workspaces.ActiveChanged += OnActiveWorkspaceChanged;
 
@@ -53,9 +61,15 @@ public partial class MainWindow : Window
         RefreshActiveWorkspaceUi();
         DebugLog.Info("Main window ready");
 
-        Loaded += async (_, _) => await CheckForUpdatesOnStartupAsync();
+        Loaded += async (_, _) =>
+        {
+            _updatePollTimer.Start();
+            await PollForUpdatesAsync();
+        };
+        Activated += async (_, _) => await PollForUpdatesAsync();
         Closed += (_, _) =>
         {
+            _updatePollTimer.Stop();
             _httpClient.Dispose();
             _windowTheme.Dispose();
             _workspaces.Dispose();
@@ -247,55 +261,41 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void UpdateButton_Click(object sender, RoutedEventArgs e)
+    private void UpdateButton_Click(object sender, RoutedEventArgs e)
     {
-        UpdateButton.IsEnabled = false;
-        var originalContent = UpdateButton.Content;
-        UpdateButton.Content = "Checking…";
+        // The window runs its own fresh check as it opens.
+        new UpdateWindow(CurrentVersion, _updateService, _updateChecker) { Owner = this }.ShowDialog();
 
-        try
+        if (_updateChecker.LastResult is { } result)
         {
-            var result = await GetUpdateCheckAsync();
-            new UpdateWindow(CurrentVersion, _updateService, result) { Owner = this }.ShowDialog();
-        }
-        catch (Exception)
-        {
-            _updateCheckTask = null;
-            new UpdateWindow(
-                CurrentVersion,
-                _updateService,
-                null,
-                "The update service is unavailable. Check your connection, or try again after a GitHub Release has been published.")
-            {
-                Owner = this,
-            }.ShowDialog();
-        }
-        finally
-        {
-            UpdateButton.Content = originalContent;
-            UpdateButton.IsEnabled = true;
+            ShowUpdateAvailability(result);
         }
     }
 
-    private async Task CheckForUpdatesOnStartupAsync()
+    private async Task PollForUpdatesAsync()
     {
         try
         {
-            var result = await GetUpdateCheckAsync();
-            if (result.IsUpdateAvailable)
-            {
-                UpdateButton.Content = "Update available";
-                StatusText.Text = $"WinTilix {GitHubUpdateService.FormatVersion(result.LatestVersion)} is available.";
-            }
+            ShowUpdateAvailability(await _updateChecker.GetAsync());
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _updateCheckTask = null;
+            DebugLog.Warn("Background update check failed: " + ex.Message);
         }
     }
 
-    private Task<UpdateCheckResult> GetUpdateCheckAsync() =>
-        _updateCheckTask ??= _updateService.CheckAsync(CurrentVersion);
+    private void ShowUpdateAvailability(UpdateCheckResult result)
+    {
+        if (!result.IsUpdateAvailable)
+        {
+            UpdateButton.Content = "Check for updates";
+            return;
+        }
+
+        var latest = GitHubUpdateService.FormatVersion(result.LatestVersion);
+        UpdateButton.Content = $"Update to {latest}";
+        StatusText.Text = $"WinTilix {latest} is available. Use the update button to install it.";
+    }
 
     private void CloseFocused()
     {

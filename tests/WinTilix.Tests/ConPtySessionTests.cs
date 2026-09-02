@@ -24,6 +24,15 @@ public class ConPtySessionTests
         Assert.Contains("broadcast-pane: WIN_TILIX_SYNC_OK", result.Output);
     }
 
+    [Fact]
+    public void Resize_reaches_the_child_process()
+    {
+        var result = RunPtyCheck("resize");
+        Assert.True(result.ExitCode == 0, result.Output);
+        Assert.Contains("PTY_CHECK_RESIZE_OK", result.Output);
+        Assert.Contains("pty-size: cols=132 rows=44", result.Output);
+    }
+
     private static (int ExitCode, string Output) RunPtyCheck(string mode)
     {
         var exe = Path.Combine(AppContext.BaseDirectory, "WinTilix.PtyCheck.exe");

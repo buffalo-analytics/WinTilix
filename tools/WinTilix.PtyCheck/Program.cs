@@ -7,6 +7,7 @@ using WinTilix.Terminal;
 return args.FirstOrDefault() switch
 {
     "sync" => Checker.RunSync(),
+    "resize" => Checker.RunResize(),
     _ => Checker.RunEcho()
 };
 
@@ -69,6 +70,49 @@ static class Checker
         Console.WriteLine("--- first ---\n" + StripAnsi(firstText));
         Console.WriteLine("--- second ---\n" + StripAnsi(secondText));
         return 3;
+    }
+
+    public static int RunResize()
+    {
+        const int cols = 132;
+        const int rows = 44;
+        var output = new StringBuilder();
+        using var session = ConPtySession.Start(CmdInteractive(), workingDirectory: null, 80, 24, Append(output));
+        WaitUntil(output, static t => StripAnsi(t).Length > 0, TimeSpan.FromSeconds(8));
+
+        // Round-trip a command first: cmd drops anything typed before it reads stdin.
+        session.Write("echo PTY_READY\r\n");
+        WaitUntil(output, static t => Occurrences(t, "PTY_READY") >= 2, TimeSpan.FromSeconds(8));
+
+        session.Resize(cols, rows);
+        Thread.Sleep(500);
+
+        // `mode con` reports the pseudoconsole geometry the child actually sees.
+        session.Write("mode con\r\n");
+        var text = WaitUntil(output, MatchesSize, TimeSpan.FromSeconds(8));
+        if (MatchesSize(text))
+        {
+            Console.WriteLine("PTY_CHECK_RESIZE_OK");
+            Console.WriteLine($"pty-size: cols={cols} rows={rows}");
+            return 0;
+        }
+
+        Console.WriteLine("PTY_CHECK_RESIZE_FAIL");
+        Console.WriteLine(StripAnsi(text));
+        return 4;
+
+        static bool MatchesSize(string raw)
+        {
+            var visible = StripAnsi(raw);
+            var reported = visible.LastIndexOf("mode con", StringComparison.Ordinal);
+            if (reported < 0)
+            {
+                return false;
+            }
+
+            var tail = visible[reported..];
+            return Regex.IsMatch(tail, @"\b132\b") && Regex.IsMatch(tail, @"\b44\b");
+        }
     }
 
     static string CmdSlashC(string text)

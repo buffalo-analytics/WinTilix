@@ -79,7 +79,14 @@
     });
 
     function fitNow() {
+      // Reflowing can leave the viewport parked above the prompt, so a terminal that
+      // was already scrolled to the bottom stays there.
+      const buffer = term.buffer.active;
+      const wasAtBottom = buffer.viewportY >= buffer.baseY;
       try { fit.fit(); } catch (e) {}
+      if (wasAtBottom) {
+        term.scrollToBottom();
+      }
     }
 
     window.addEventListener("resize", fitNow);
