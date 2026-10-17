@@ -55,6 +55,15 @@
       term.focus();
     });
     term.attachCustomKeyEventHandler((ev) => {
+      // Ctrl+V and Ctrl+Shift+V both paste through the host. preventDefault stops the
+      // browser's own paste event, which xterm would otherwise insert a second time.
+      if (ev.ctrlKey && !ev.altKey && !ev.metaKey && ev.code === "KeyV") {
+        ev.preventDefault();
+        if (ev.type === "keydown") {
+          post({ type: "paste-request" });
+        }
+        return false;
+      }
       if (!ev.ctrlKey || !ev.shiftKey || ev.altKey || ev.type !== "keydown") {
         return true;
       }
@@ -63,10 +72,6 @@
         if (selection) {
           post({ type: "copy", data: selection });
         }
-        return false;
-      }
-      if (ev.code === "KeyV") {
-        post({ type: "paste-request" });
         return false;
       }
       const commands = { KeyE: "split-right", KeyO: "split-down", KeyW: "close", KeyI: "toggle-sync" };
