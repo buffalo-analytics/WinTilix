@@ -3,6 +3,7 @@ using Xunit;
 
 namespace WinTilix.Tests;
 
+[Collection("LocalAppData")]
 public class ClusterStoreTests
 {
     [Fact]

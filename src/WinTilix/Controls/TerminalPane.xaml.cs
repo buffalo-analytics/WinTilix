@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
+using WinTilix.Agents;
 using WinTilix.Diagnostics;
 using WinTilix.Session;
 using WinTilix.Terminal;
@@ -29,6 +30,8 @@ public partial class TerminalPane : UserControl, ISyncTarget
     private int _sessionGeneration;
     private SshHealth _sshHealth = SshHealth.Connecting;
     private string _sshOutputTail = "";
+    private readonly DispatcherTimer _agentTimer;
+    private bool _agentRefreshing;
 
     public string PaneId { get; } = Guid.NewGuid().ToString("N");
     public string CommandLine { get; private set; }
@@ -68,6 +71,64 @@ public partial class TerminalPane : UserControl, ISyncTarget
             SetSshHealth(SshHealth.Connecting);
         }
         UpdateSyncChrome();
+
+        _agentTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _agentTimer.Tick += async (_, _) => await RefreshAgentAsync();
+        _agentTimer.Start();
+    }
+
+    // Shows which Claude Code agent (e.g. davidp-12) runs in this pane, coloured by its role.
+    private async Task RefreshAgentAsync()
+    {
+        var session = _session;
+        if (session is null || _agentRefreshing)
+        {
+            return;
+        }
+
+        _agentRefreshing = true;
+        try
+        {
+            var agent = await Task.Run(() => AgentLocator.Find(session.ProcessId));
+            ApplyAgent(agent);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Error("Agent lookup failed", ex);
+        }
+        finally
+        {
+            _agentRefreshing = false;
+        }
+    }
+
+    private void ApplyAgent(AgentInfo? agent)
+    {
+        if (agent is null)
+        {
+            AgentBadge.Visibility = Visibility.Collapsed;
+            TitleBar.BorderBrush = Brushes.Transparent;
+            return;
+        }
+
+        var color = (Color)ColorConverter.ConvertFromString(AgentRoleCatalog.ColorHex(agent.Kind));
+        var dot = agent.Status == "busy" ? "●" : "○";
+        AgentBadgeText.Text = agent.Role is { Length: > 0 }
+            ? $"{dot} {agent.Name} · {agent.Kind.ToString().ToLowerInvariant()}"
+            : $"{dot} {agent.Name}";
+        AgentBadgeText.Foreground = new SolidColorBrush(color);
+        AgentBadge.Background = new SolidColorBrush(Color.FromArgb(0x33, color.R, color.G, color.B));
+        AgentBadge.ToolTip = $"{agent.Name}\n{agent.Role ?? "no role set in agent-roles.json"}\nstatus: {agent.Status ?? "unknown"}";
+        AgentBadge.Visibility = Visibility.Visible;
+        TitleBar.BorderBrush = new SolidColorBrush(color);
+    }
+
+    private async void EditAgentColors_Click(object sender, RoutedEventArgs e)
+    {
+        if (new AgentColorsWindow { Owner = Window.GetWindow(this) }.ShowDialog() == true)
+        {
+            await RefreshAgentAsync();
+        }
     }
 
     public void ReceiveSyncedInput(string data) => _session?.Write(data);
@@ -562,6 +623,7 @@ public partial class TerminalPane : UserControl, ISyncTarget
     {
         _hub.Unregister(this);
         _hub.SyncModeChanged -= UpdateSyncChrome;
+        _agentTimer.Stop();
         _session?.Dispose();
         _session = null;
     }

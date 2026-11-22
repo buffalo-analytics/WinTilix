@@ -4,7 +4,8 @@
              xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
   <Border BorderBrush="#2b2b2b" BorderThickness="0,0,1,1" Background="#1c1c1c">
     <DockPanel>
-      <Border x:Name="TitleBar" DockPanel.Dock="Top" Background="#252525" Padding="8,4">
+      <Border x:Name="TitleBar" DockPanel.Dock="Top" Background="#252525" Padding="8,4"
+              BorderThickness="3,0,0,0" BorderBrush="Transparent">
         <DockPanel>
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
             <Button x:Name="SyncButton" Click="SyncButton_Click" Width="28" Height="22" Margin="0,0,4,0"
@@ -21,6 +22,16 @@
           <Border x:Name="ConnectionHealthBadge" DockPanel.Dock="Right"
                   Visibility="Collapsed" CornerRadius="9" Margin="8,1,8,1" Padding="7,1">
             <TextBlock x:Name="ConnectionHealthText" FontSize="11" FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+          </Border>
+          <Border x:Name="AgentBadge" DockPanel.Dock="Left" Visibility="Collapsed"
+                  CornerRadius="9" Margin="0,1,8,1" Padding="8,1" VerticalAlignment="Center">
+            <Border.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Edit agent colours…" Click="EditAgentColors_Click"/>
+              </ContextMenu>
+            </Border.ContextMenu>
+            <TextBlock x:Name="AgentBadgeText" FontSize="12" FontWeight="SemiBold"
                        VerticalAlignment="Center"/>
           </Border>
           <ComboBox x:Name="SessionSelector"

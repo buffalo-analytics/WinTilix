@@ -9,6 +9,33 @@ internal static class NativeMethods
     public const uint ProcThreadAttributePseudoConsole = 0x00020016;
     public const uint Infinite = 0xFFFFFFFF;
 
+    public const uint Th32csSnapProcess = 0x00000002;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct ProcessEntry32
+    {
+        public uint dwSize;
+        public uint cntUsage;
+        public uint th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public uint th32ModuleID;
+        public uint cntThreads;
+        public uint th32ParentProcessID;
+        public int pcPriClassBase;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szExeFile;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool Process32FirstW(IntPtr snapshot, ref ProcessEntry32 entry);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool Process32NextW(IntPtr snapshot, ref ProcessEntry32 entry);
+
     [StructLayout(LayoutKind.Sequential)]
     public struct Coord
     {
