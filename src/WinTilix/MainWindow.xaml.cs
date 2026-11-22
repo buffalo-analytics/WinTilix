@@ -1,9 +1,11 @@
-﻿using System.Net.Http;
+﻿using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using WinTilix.Agents;
 using WinTilix.Controls;
 using WinTilix.Diagnostics;
 using WinTilix.Session;
@@ -240,6 +242,66 @@ public partial class MainWindow : Window
         var tab = _workspaces.OpenCluster(dialog.SelectedCluster);
         StatusText.Text = $"Opened cluster '{tab.Title}' in a new workspace tab.";
         RefreshActiveWorkspaceUi();
+    }
+
+    private async void AgentGroup_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new AgentGroupWindow { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.SelectedGroup is not { } group)
+        {
+            return;
+        }
+
+        var shell = ClaudeLauncher.PowerShellExecutable();
+        var launches = new List<(string CommandLine, string Title)>();
+        var roles = new Dictionary<string, string>();
+        var problems = new List<string>();
+        foreach (var spec in ClaudeLauncher.WithUniqueNames(group.Agents))
+        {
+            var folder = string.IsNullOrWhiteSpace(spec.Folder)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                : spec.Folder;
+            if (!Directory.Exists(folder))
+            {
+                problems.Add($"{spec.Name}: folder not found: {folder}");
+                continue;
+            }
+
+            if (group.UseWorktrees)
+            {
+                var (path, error) = await Task.Run(() => ClaudeLauncher.TryCreateWorktree(folder, spec.Name));
+                if (path is null)
+                {
+                    problems.Add($"{spec.Name}: {error}");
+                    continue;
+                }
+
+                folder = path;
+            }
+
+            launches.Add((
+                ClaudeLauncher.BuildCommandLine(ClaudeLauncher.BuildScript(spec, folder, group.FallbackModel), shell),
+                spec.Name));
+            roles[spec.Name] = spec.Role;
+        }
+
+        if (launches.Count > 0)
+        {
+            AgentRoleCatalog.SetRoles(roles);
+            _workspaces.OpenAgentGroup(group.Name, launches);
+            StatusText.Text = $"Opened '{group.Name}' with {launches.Count} agent(s). Sync is off; each tile is its own session.";
+            RefreshActiveWorkspaceUi();
+        }
+
+        if (problems.Count > 0)
+        {
+            MessageBox.Show(
+                this,
+                "Some agents were not started:\n\n" + string.Join("\n", problems),
+                "Claude Dev Group",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     private void DebugReport_Click(object sender, RoutedEventArgs e)

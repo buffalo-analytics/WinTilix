@@ -46,6 +46,21 @@ public static class AgentRoleCatalog
         }
     }
 
+    /// <summary>Records the role of a launched agent so its badge is coloured straight away.</summary>
+    public static void SetRoles(IReadOnlyDictionary<string, string> additions)
+    {
+        var roles = new Dictionary<string, string>(Load(), StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, role) in additions)
+        {
+            roles[name] = role;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(RolesPath)!);
+        File.WriteAllText(
+            RolesPath,
+            JsonSerializer.Serialize(roles, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
     public static AgentRoleKind Classify(string? role)
     {
         if (string.IsNullOrWhiteSpace(role))

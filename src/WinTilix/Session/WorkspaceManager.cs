@@ -68,6 +68,30 @@ public sealed class WorkspaceManager : IDisposable
         return tab;
     }
 
+    /// <summary>One tile per command, all started together. Sync stays off: agents get different input.</summary>
+    public WorkspaceTab OpenAgentGroup(string title, IReadOnlyList<(string CommandLine, string Title)> agents)
+    {
+        if (agents.Count == 0)
+        {
+            throw new ArgumentException("Add at least one agent.", nameof(agents));
+        }
+
+        var tab = new WorkspaceTab(title);
+        var panes = agents
+            .Select(agent =>
+            {
+                var pane = _createPane(tab.Hub, agent.CommandLine, agent.Title);
+                WirePane(tab, pane);
+                return pane;
+            })
+            .ToList();
+        tab.Tiling.ReplaceAll(panes);
+        tab.FocusedPane = panes[0];
+        _tabs.Add(tab);
+        Activate(tab);
+        return tab;
+    }
+
     public void Activate(WorkspaceTab tab)
     {
         if (!_tabs.Contains(tab))

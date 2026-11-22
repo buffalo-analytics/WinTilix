@@ -1,0 +1,50 @@
+<Window x:Class="WinTilix.AgentGroupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Open Claude Dev Group"
+        Height="680" Width="820"
+        MinHeight="480" MinWidth="700"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1e1e"
+        Foreground="#e6e6e6">
+  <DockPanel Margin="18">
+    <TextBlock DockPanel.Dock="Top" FontSize="20" FontWeight="SemiBold" Text="Open Claude Dev Group"/>
+    <TextBlock DockPanel.Dock="Top" Margin="0,8,0,12" Foreground="#9a9a9a" TextWrapping="Wrap"
+               Text="One tile per agent, all started together in a new workspace. Each runs claude -n NAME --model MODEL --append-system-prompt ROLE in its folder."/>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Delete group" Width="110" Click="Delete_Click"/>
+      <Button Content="Save group" Width="110" Margin="8,0,0,0" Click="Save_Click"/>
+      <Button Content="Open group" Width="110" Margin="8,0,0,0" IsDefault="True" Click="Open_Click"/>
+      <Button Content="Cancel" Width="90" Margin="8,0,0,0" IsCancel="True"/>
+    </StackPanel>
+
+    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="150"/>
+      </Grid.ColumnDefinitions>
+      <ComboBox x:Name="SavedGroups" Grid.Column="0" Width="190" Style="{StaticResource DarkComboBox}"
+                Height="26" DisplayMemberPath="Name" SelectionChanged="SavedGroups_SelectionChanged"
+                ToolTip="Load a saved group"/>
+      <TextBox x:Name="NameBox" Grid.Column="1" Margin="8,0,8,0" Style="{StaticResource DarkTextBox}"
+               ToolTip="Group name (also the workspace tab title)"/>
+      <TextBlock Grid.Column="2" Text="Fallback model" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9a9a9a"/>
+      <TextBox x:Name="FallbackBox" Grid.Column="3" Style="{StaticResource DarkTextBox}"
+               ToolTip="Optional --fallback-model, used if a model is overloaded (e.g. sonnet)"/>
+    </Grid>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+      <Button Content="+ Add agent" Padding="12,4" Click="AddAgent_Click"/>
+      <CheckBox x:Name="WorktreeBox" Content="Separate git worktree per agent" Margin="16,0,0,0"
+                VerticalAlignment="Center" Foreground="#e6e6e6"
+                ToolTip="Folders that are git repositories get a worktree and branch agent/NAME so agents never share a checkout"/>
+    </StackPanel>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel x:Name="Rows"/>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

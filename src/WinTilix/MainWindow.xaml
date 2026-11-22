@@ -21,6 +21,8 @@
         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
           <ToggleButton x:Name="SyncToggle" Content="Synchronize input" Padding="12,4" Click="SyncToggle_Click"
                         ToolTip="Type once, send to every pane in the active workspace that has the keyboard icon enabled (Ctrl+Shift+I)"/>
+          <Button Content="Open Claude Dev Group…" Margin="8,0,0,0" Padding="12,4" Click="AgentGroup_Click"
+                  ToolTip="Start several Claude Code agents at once, one tile each, with a role and model per agent"/>
           <Button Content="SSH clusters…" Margin="8,0,0,0" Padding="12,4" Click="Cluster_Click"/>
           <Button Content="Edit SSH config…" Margin="8,0,0,0" Padding="12,4" Click="EditSshConfig_Click"
                   ToolTip="Edit ~/.ssh/config and included config files"/>
