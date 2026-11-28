@@ -167,16 +167,12 @@ public partial class TerminalPane : UserControl, ISyncTarget
 
         try
         {
-            await WebView.EnsureCoreWebView2Async();
+            await WebViewEnvironment.InitializeAsync(WebView);
         }
         catch (Exception ex)
         {
             DebugLog.Error("WebView2 failed to initialize", ex);
-            MessageBox.Show(
-                "Microsoft Edge WebView2 Runtime is required.\n\n" + ex.Message,
-                "WinTilix",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            WebViewEnvironment.ShowFailureOnce(ex);
             return;
         }
 
