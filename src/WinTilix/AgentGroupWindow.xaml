@@ -22,6 +22,7 @@
     <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
         <ColumnDefinition Width="150"/>
@@ -29,10 +30,13 @@
       <ComboBox x:Name="SavedGroups" Grid.Column="0" Width="190" Style="{StaticResource DarkComboBox}"
                 Height="26" DisplayMemberPath="Name" SelectionChanged="SavedGroups_SelectionChanged"
                 ToolTip="Load a saved group"/>
-      <TextBox x:Name="NameBox" Grid.Column="1" Margin="8,0,8,0" Style="{StaticResource DarkTextBox}"
+      <ComboBox x:Name="Templates" Grid.Column="1" Width="210" Margin="8,0,0,0" Style="{StaticResource DarkComboBox}"
+                Height="26" DisplayMemberPath="Name" SelectionChanged="Templates_SelectionChanged"
+                ToolTip="Start from a ready-made team: software, mechanical and mechatronic engineering, scientific veterinary review. Edit it, then Open or Save."/>
+      <TextBox x:Name="NameBox" Grid.Column="2" Margin="8,0,8,0" Style="{StaticResource DarkTextBox}"
                ToolTip="Group name (also the workspace tab title)"/>
-      <TextBlock Grid.Column="2" Text="Fallback model" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9a9a9a"/>
-      <TextBox x:Name="FallbackBox" Grid.Column="3" Style="{StaticResource DarkTextBox}"
+      <TextBlock Grid.Column="3" Text="Fallback model" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#9a9a9a"/>
+      <TextBox x:Name="FallbackBox" Grid.Column="4" Style="{StaticResource DarkTextBox}"
                ToolTip="Optional --fallback-model, used if a model is overloaded (e.g. sonnet)"/>
     </Grid>
 

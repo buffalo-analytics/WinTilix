@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: new-domain-solar-pv
+expected_outcome: |
+  A new, valid, installed solar PV group with one coordinator, QA, an independent reviewer, makers, and a standards seat naming PV or electrical-installation standards; existing groups untouched.

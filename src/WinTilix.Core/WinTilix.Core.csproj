@@ -8,4 +8,8 @@
     <Description>ConPTY, tiling session sync, and shell resolution for WinTilix</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Agents\Templates\*.json" />
+  </ItemGroup>
+
 </Project>

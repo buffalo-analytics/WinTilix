@@ -24,7 +24,32 @@ public partial class AgentGroupWindow : Window
         InitializeComponent();
         Closed += (_, _) => _windowTheme.Dispose();
         RefreshSaved();
+        RefreshTemplates();
         Load(new AgentGroupDefinition { Name = "Dev group", Agents = AgentGroupPresets.DefaultAgents() });
+    }
+
+    private static readonly AgentGroupDefinition TemplatesPlaceholder = new() { Name = "Templates..." };
+
+    private void RefreshTemplates()
+    {
+        _loading = true;
+        Templates.ItemsSource = new[] { TemplatesPlaceholder }.Concat(AgentGroupTemplates.All()).ToList();
+        Templates.SelectedIndex = 0;
+        _loading = false;
+    }
+
+    private void Templates_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || Templates.SelectedItem is not AgentGroupDefinition template || ReferenceEquals(template, TemplatesPlaceholder))
+        {
+            return;
+        }
+
+        Load(AgentGroupTemplates.Copy(template));
+        _loading = true;
+        Templates.SelectedIndex = 0;
+        SavedGroups.SelectedIndex = -1;
+        _loading = false;
     }
 
     private void RefreshSaved()

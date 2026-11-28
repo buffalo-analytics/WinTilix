@@ -9,6 +9,7 @@ WinTilix is a native Windows app (WPF + ConPTY + WebView2). It is **not** a port
 - **Tiled panes** — split right or down; drag the splitter to resize. Closing a pane keeps the rest of the tree intact.
 - **Synchronized input** — session-wide toggle plus a per-pane keyboard control so you can include or exclude a pane.
 - **SSH cluster** — paste one `user@host` per line; WinTilix opens a pane for each host (via Windows OpenSSH) and turns sync on.
+- **Agent groups** — *Open Claude Dev Group* starts several Claude Code agents at once, each with a role, a model and a role prompt. Ready-made templates (software dev team, mechanical and mechatronic engineering, scientific veterinary review, each in a full and a core size) are built in; pick one from **Templates**, adjust it and open it. The `wintilix-groups` skill in `tools/wintilix-groups-skill` designs new teams for other fields.
 - **Default shell** — prefers PowerShell 7 (`pwsh`), then Windows PowerShell, then `cmd`.
 - **Per-monitor DPI** — `PerMonitorV2` awareness so tiles stay sharp on mixed-DPI setups.
 
@@ -82,6 +83,7 @@ This matches Tilix’s session-level sync: one session flag, plus a per-terminal
 | --- | --- |
 | `src/WinTilix` | WPF UI, tiling host, WebView2 terminal panes |
 | `src/WinTilix.Core` | ConPTY session client, shell resolution, input-sync hub |
+| `tools/wintilix-groups-skill` | Claude Code skill that researches and builds agent-group teams; source of the built-in templates |
 | `tools/WinTilix.PtyHost` | Helper process that owns the Windows Pseudo Console |
 | `tools/WinTilix.PtyCheck` | Small ConPTY diagnostics helper used by tests |
 | `tests/WinTilix.Tests` | xUnit tests for session sync and ConPTY |
